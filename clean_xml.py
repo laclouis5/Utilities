@@ -251,7 +251,8 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8):
 		shutil.copy(img_path, os.path.join(save_dir, idenfier + '.jpg'))
 
 def main(args=None):
-	base_path='/media/deepwater/Data2/Louis/RetinaNet/datasets/'
+	base_path = '/media/deepwater/Data2/Louis/RetinaNet/datasets/'
+
 	folders = [
 		'training_set/mais_haricot_feverole_pois/50/1',
 		'training_set/mais_haricot_feverole_pois/50/2',
@@ -269,7 +270,7 @@ def main(args=None):
 		# 'training_set/database_operose',
 		'validation_set',
 		# 'validation_set_challenge'
-	]
+		]
 
 	folders = [os.path.join(base_path, folder) for folder in folders]
 
@@ -294,7 +295,7 @@ def main(args=None):
 		print('{}: {}'.format(key, value))
 	print('Nb images: {}'.format(boundingBoxes.count()))
 
-	boundingBoxes.plotHistogram()
+	
 
 	# xml_to_yolo_2(folders, yolo_path, names_to_labels)
 	# xml_to_csv(folders, csv_train, csv_val, names_to_labels)

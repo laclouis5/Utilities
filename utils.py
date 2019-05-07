@@ -1,7 +1,5 @@
 from enum import Enum
-
 import cv2
-
 
 class MethodAveragePrecision(Enum):
     """

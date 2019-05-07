@@ -11,19 +11,6 @@ from BoundingBoxes import BoundingBoxes
 from Evaluator import *
 from utils import *
 
-base_path = '/media/deepwater/Data2/Louis/RetinaNet/datasets/'
-
-folders = [
-	'training_set/mais_haricot_feverole_pois/50/1',
-	'training_set/mais_haricot_feverole_pois/50/2',
-	'training_set/mais_haricot_feverole_pois/60/1',
-	'training_set/mais_haricot_feverole_pois/60/2',
-	'training_set/mais_haricot_feverole_pois/100/1',
-	'training_set/mais_haricot_feverole_pois/100/2',
-]
-
-directories = [os.path.join(base_path, folder) for folder in folders]
-
 def parse_xml(directories, classes=None):
     xml_files = []
     for directory in directories:
@@ -55,9 +42,28 @@ def parse_xml(directories, classes=None):
 
     return allBoundingBoxes
 
-if __name__ == '__main__':
-    classes = ['mais', 'haricot', 'carotte']
-
-    allBoundingBoxes = parse_xml(directories, classes)
-    print('count: {}'.format(allBoundingBoxes.count()))
-    print(allBoundingBoxes.stats())
+# if __name__ == '__main__':
+#
+# 	base_path = '/media/deepwater/Data2/Louis/RetinaNet/datasets/'
+# 	classes   = ['mais', 'haricot', 'carotte']
+#
+# 	folders = [
+# 		'training_set/mais_haricot_feverole_pois/50/1',
+# 		'training_set/mais_haricot_feverole_pois/50/2',
+# 		'training_set/mais_haricot_feverole_pois/60/1',
+# 		'training_set/mais_haricot_feverole_pois/60/2',
+# 		'training_set/mais_haricot_feverole_pois/100/1',
+# 		'training_set/mais_haricot_feverole_pois/100/2',
+# 	]
+#
+# 	validation_folder = [
+# 		"validation1/"
+# 		"validation2/"
+# 		"validation3/"
+# 	]
+#
+# 	directories = [os.path.join(base_path, folder) for folder in folders]
+#
+#     allBoundingBoxes = parse_xml(directories, classes)
+#     print('count: {}'.format(allBoundingBoxes.count()))
+#     print(allBoundingBoxes.stats())
