@@ -3,7 +3,7 @@ import datetime
 import os
 
 class XMLTree:
-    
+
     def __init__(self, image_name, width, height, user_name='Unknown user', date=str(datetime.date.today())):
         """
         Creates a ElementTree containing results of classification.
@@ -54,6 +54,7 @@ class XMLTree:
         Arguments:
         tree       -- The ElementTree to be filled with mask info.
         plant_type -- String containing the type of plant (either 'Adventice' or 'PlanteInteret')
+        bbox       -- bbox xmin, ymin, xmax, ymax list
         name       -- String (optional), plant name.
         """
         # Go to 'DL_DOCUMENT' node & retreive mask ID

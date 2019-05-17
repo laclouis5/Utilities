@@ -91,27 +91,27 @@ def compute_struct_tensor(image_path, w, sigma=1.5):
 
         return img_coherency, img_orientation
 
-image = io.imread("data/carotte.jpg")
-mask = egi_mask(image)
-image_green = image.copy()
-image_green[mask==0] = 0
-# plt.subplot(221)
-# plt.imshow(image)
-# plt.subplot(222)
-# plt.imshow(mask)
-# plt.subplot(223)
-# plt.imshow(image_green)
+# image = io.imread("data/carotte.jpg")
+# mask = egi_mask(image)
+# image_green = image.copy()
+# image_green[mask==0] = 0
+# # plt.subplot(221)
+# # plt.imshow(image)
+# # plt.subplot(222)
+# # plt.imshow(mask)
+# # plt.subplot(223)
+# # plt.imshow(image_green)
+# # plt.show()
+#
+# # scatter3d(image, mask)
+# #structure_tensor(image)
+#
+# coherence, orientation = compute_struct_tensor("data/im_33.jpg", 32, 10)
+#
+# plt.subplot(121)
+# plt.title("Coherence")
+# plt.imshow(coherence)
+# plt.subplot(122)
+# plt.title("Orientation")
+# plt.imshow(orientation)
 # plt.show()
-
-# scatter3d(image, mask)
-#structure_tensor(image)
-
-coherence, orientation = compute_struct_tensor("data/im_33.jpg", 32, 10)
-
-plt.subplot(121)
-plt.title("Coherence")
-plt.imshow(coherence)
-plt.subplot(122)
-plt.title("Orientation")
-plt.imshow(orientation)
-plt.show()
