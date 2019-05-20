@@ -250,6 +250,73 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8):
 
 		shutil.copy(img_path, os.path.join(save_dir, idenfier + '.jpg'))
 
+
+def add_negative_image(folder):
+	'''
+	Never use this function without knowing what it does. It is trully shit coded.
+	'''
+	images = [item for item in os.listdir(folder) if os.path.splitext(item)[1] == '.jpg']
+
+	annotations = [os.path.join(folder, os.path.splitext(item)[0] + '.txt') for item in images]
+	annot_exist = [os.path.isfile(item) for item in annotations]
+	empty_annot = [item for i, item in enumerate(annotations) if annot_exist[i] == False]
+
+	for item in empty_annot:
+		with open(item, 'w') as f:
+			f.write('')
+
+	with open('/home/deepwater/github/darknet/data/train_2.txt', 'a') as f:
+		for item in empty_annot:
+			f.write(os.path.join('data/train/', os.path.split(os.path.splitext(item)[0])[1] + '.jpg') + '\n')
+
+	with open('/home/deepwater/github/darknet/data/train_2.txt', 'r') as f:
+		content = f.readlines()
+
+	shuffle(content)
+
+	with open('/home/deepwater/github/darknet/data/train_3.txt', 'w') as f:
+		f.writelines(content)
+
+	print('Written files:', len(empty_annot))
+
+
+def remove_to_close(folder, save_dir, class_id, margin=0.001):
+	annotations = [os.path.join(folder, item) for item in os.listdir(folder) if os.path.splitext(item)[1] == '.txt']
+
+	for annotation in annotations:
+		with open(annotation, 'r') as f:
+			content = f.readlines()
+
+		content = [c.strip() for c in content]
+
+		with open(os.path.join(save_dir, os.path.split(annotation)[1]), 'w') as f:
+			for line in content:
+				label, x, y, w, h = line.split(' ')
+
+				if int(label) == class_id:
+					xmin = float(x) - float(w) / 2.0
+					xmax = float(x) + float(w) / 2.0
+					ymin = float(y) - float(h) / 2.0
+					ymax = float(y) + float(h) / 2.0
+
+					if (xmin > margin) and (ymin > margin) and (xmax < 1 - margin) and (ymax < 1 - margin):
+						f.write('{} {} {} {} {}\n'.format(label, x, y, w, h))
+
+				else:
+					f.write('{} {} {} {} {}\n'.format(label, x, y, w, h))
+
+
+def change_path(folder, new_name, new_file):
+	with open(folder, 'r') as f:
+		content = f.readlines()
+
+	content = [c.strip() for c in content]
+	images = [os.path.join(new_name, os.path.split(item)[1]) + '\n' for item in content]
+
+	with open(new_file, 'w') as f:
+		f.writelines(images)
+
+
 def main(args=None):
 	base_path = '/media/deepwater/Data2/Louis/RetinaNet/datasets/'
 
@@ -274,12 +341,6 @@ def main(args=None):
 
 	folders = [os.path.join(base_path, folder) for folder in folders]
 
-	# test_folders = [
-	# 	'validation_set'
-	# ]
-
-	# test_folders = [os.path.join(base_path, folder) for folder in test_folders]
-
 	names_to_labels = {'mais': 0, 'haricot': 1, 'carotte': 2}
 	classes = ['mais', 'haricot', 'carotte']
 
@@ -291,14 +352,10 @@ def main(args=None):
 
 	boundingBoxes = parse_xml(folders, classes)
 
+	print('Total boxes: {}'.format(boundingBoxes.count()))
 	for key, value in boundingBoxes.stats().items():
 		print('{}: {}'.format(key, value))
-	print('Nb images: {}'.format(boundingBoxes.count()))
-
-	
-
-	# xml_to_yolo_2(folders, yolo_path, names_to_labels)
-	# xml_to_csv(folders, csv_train, csv_val, names_to_labels)
+		
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
 
 if __name__ == '__main__':
