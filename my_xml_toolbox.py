@@ -1,4 +1,4 @@
-from xml.etree.ElementTree import Element, SubElement, tostring, parse
+from lxml.etree import Element, SubElement, tostring, parse
 import datetime
 import os
 
@@ -109,7 +109,7 @@ class XMLTree:
         """
 
         # TreeElement to string representation
-        tree_str = tostring(self.tree, encoding='unicode')
+        tree_str = tostring(self.tree, encoding='unicode', pretty_print=True)
 
         # Write data
         with open(xml_file_name, 'w') as xml_file:
@@ -129,7 +129,7 @@ class XMLTree:
                 path_field.text = os.path.join(folder, file)
 
                 with open(os.path.join(folder, file), 'w') as xml_file:
-                    tree_str = tostring(tree, encoding='unicode')
+                    tree_str = tostring(tree, encoding='unicode', pretty_print=True)
                     xml_file.write(tree_str)
 
 
