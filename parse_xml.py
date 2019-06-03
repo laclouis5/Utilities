@@ -29,7 +29,7 @@ def parse_xml(directories, classes=None):
 
         for object in tree.findall('object'):
             class_id = object.find('name').text
-            if classes and class_id not in classes:
+            if classes and (class_id not in classes):
                 continue
 
             xmin = float(object.find('bndbox').find('xmin').text)

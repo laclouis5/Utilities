@@ -265,11 +265,11 @@ def add_negative_image(folder):
 		with open(item, 'w') as f:
 			f.write('')
 
-	with open('/home/deepwater/github/darknet/data/train_2.txt', 'a') as f:
+	with open('/home/deepwater/github/darknet/data/tmp.txt', 'a') as f:
 		for item in empty_annot:
 			f.write(os.path.join('data/train/', os.path.split(os.path.splitext(item)[0])[1] + '.jpg') + '\n')
 
-	with open('/home/deepwater/github/darknet/data/train_2.txt', 'r') as f:
+	with open('/home/deepwater/github/darknet/data/tmp.txt', 'r') as f:
 		content = f.readlines()
 
 	shuffle(content)
@@ -332,8 +332,10 @@ def main(args=None):
 		'training_set/carotte/5',
 		'training_set/mais/2',
 		'training_set/mais/7',
-		'training_set/mais/7-2',
+		# 'training_set/mais/7-2',
 		'training_set/mais/6',
+		'training_set/montoldre_05-2019/mais',
+		'training_set/montoldre_05-2019/haricot',
 		# 'training_set/database_operose',
 		'validation_set',
 		# 'validation_set_challenge'
@@ -341,9 +343,11 @@ def main(args=None):
 
 	folders = [os.path.join(base_path, folder) for folder in folders]
 
-	# names_to_labels = {'mais': 0, 'haricot': 1, 'carotte': 2, 'mais_tige': 3, 'haricot_tige': 4}
-	names_to_labels = {'mais_tige': 0, 'haricot_tige': 1}
-	classes = ['mais_tige', 'haricot_tige']
+	names_to_labels = {'mais': 0, 'haricot': 1, 'carotte': 2}
+	classes = ['mais', 'haricot', 'carotte']
+	# names_to_labels = {'mais_tige': 0, 'haricot_tige': 1}
+	# classes = {'mais_tige', 'haricot_tige'}
+
 
 	yolo_path = '/home/deepwater/yolo/'
 	csv_train = '/home/deepwater/train.csv'
@@ -359,6 +363,7 @@ def main(args=None):
 		print('{}: {}'.format(key, value))
 
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
+	# add_negative_image('/home/deepwater/github/darknet/data/train/')
 
 if __name__ == '__main__':
 	main()
