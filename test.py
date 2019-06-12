@@ -1,8 +1,10 @@
 from skimage import io, data, filters, feature, color, exposure, morphology
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import cv2 as cv
+from PIL import Image, ImageDraw
 
 def egi_mask(image, thresh=1.15):
     image_np = np.array(image).astype(float)
@@ -90,6 +92,80 @@ def compute_struct_tensor(image_path, w, sigma=1.5):
         img_orientation = 0.5 * cv.phase(Axx - Ayy, 2.0 * Axy, angleInDegrees=True)
 
         return img_coherency, img_orientation
+
+
+def plot_bbox_distribution(boundingBoxes):
+    classes = boundingBoxes.getClasses()
+    cmap = matplotlib.cm.get_cmap(name='gist_rainbow')
+    cmap = cmap(np.linspace(0., 1., num=len(classes)))
+    fig, ax = plt.subplots()
+
+    for i, classID in enumerate(classes):
+        bounding_boxes = boundingBoxes.getBoundingBoxByClass(classID)
+        x, y, area = [], [], []
+        mean = 0.0
+
+        for bounding_box in bounding_boxes:
+            xc, yc, wc, hc = bounding_box.getRelativeBoundingBox()
+            x.append(round(xc*bounding_box.getImageSize()[0]))
+            y.append(round(yc*bounding_box.getImageSize()[1]))
+            ar = round((wc*bounding_box.getImageSize()[0])*(hc*bounding_box.getImageSize()[1]))
+            area.append(ar)
+            mean += ar
+
+        print("Mean area for {}: {:,}".format(classID, mean/len(area)))
+        print("Min area for {}: {:,}".format(classID, min(area)))
+        print("Max area for {}: {:,}".format(classID, max(area)))
+
+        area = [item/max(area)*100 for item in area]
+        ax.scatter(x, y, area, label=classID)
+
+    ax.legend()
+    ax.grid(True)
+    plt.xlim([0, 2448])
+    plt.ylim([0, 2048])
+    # plt.xlim([0, 2048])
+    # plt.ylim([0, 1536])
+    plt.title("Box center distribution")
+    plt.show()
+
+
+def tile_database(boundingBoxes):
+    # parameters
+    (im_w, im_h) = 2448, 2048
+    main_tile_size = 1664
+    tile_size = 416
+
+    X1 = [(im_w - main_tile_size)/2 + n*tile_size for n in range(4)]
+    Y1 = [(im_h - main_tile_size)/2 + n*tile_size for n in range(4)]
+
+    X2 = [(im_w - main_tile_size)/2  + tile_size/2 + n*tile_size for n in range(3)]
+    Y2 = [(im_h - main_tile_size)/2  + tile_size/2 + n*tile_size for n in range(3)]
+
+    X1, Y1 = np.meshgrid(X1, Y1)
+    X2, Y2 = np.meshgrid(X2, Y2)
+
+    # out_image = Image.new('RGBA', size=(im_w, im_h))
+    # drawing = ImageDraw.Draw(out_image)
+    # for (i, j) in zip(X1, Y1):
+    #     for (k, l) in zip(i, j):
+    #         drawing.rectangle(xy=[k, l, k +tile_size, l + tile_size], fill=(0, 0, 255, 64))
+    # for (i, j) in zip(X2, Y2):
+    #     for (k, l) in zip(i, j):
+    #         drawing.rectangle([k, l, k + tile_size, l + tile_size], fill=(255, 0, 0, 64))
+
+    image_in = Image.open('haricot.jpg')
+    index = 0
+    for (i, j) in zip(X1, Y1):
+        for (k, l) in zip(i, j):
+            imagette = image_in.crop([k, l, k + tile_size, l + tile_size])
+            imagette.save('haricot_{}.jpg'.format(index))
+            index += 1
+    for (i, j) in zip(X2, Y2):
+        for (k, l) in zip(i, j):
+            imagette = image_in.crop([k, l, k + tile_size, l + tile_size])
+            imagette.save('haricot_{}.jpg'.format(index))
+            index += 1
 
 # image = io.imread("data/carotte.jpg")
 # mask = egi_mask(image)

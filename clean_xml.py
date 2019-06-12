@@ -12,6 +12,9 @@ from BoundingBoxes import BoundingBoxes
 from BoundingBox import BoundingBox
 from glob import glob, iglob
 from Evaluator import *
+from skimage import io
+
+import test
 
 def clean_xml_files(folders):
 	'''
@@ -317,8 +320,23 @@ def change_path(folder, new_name, new_file):
 		f.writelines(images)
 
 
+def get_image_sizes(folders):
+	sizes = []
+	for folder in folders:
+		for image_path in os.listdir(folder):
+			if os.path.splitext(image_path)[1] == '.jpg' and os.path.isfile(os.path.join(folder, os.path.splitext(image_path)[0] + '.xml')):
+				full_path = os.path.join(folder, image_path)
+				try:
+					image = io.imread(full_path)
+					shape = image.shape
+					sizes.append(shape)
+				except:
+					print('Error occured during while reading: {}'.format(full_path))
+	print(set(sizes))
+
+
 def main(args=None):
-	base_path = '/media/deepwater/Data2/Louis/RetinaNet/datasets/'
+	base_path = '/media/deepwater/DATA/Shared/Louis/RetinaNet/datasets/'
 
 	folders = [
 		'training_set/mais_haricot_feverole_pois/50/1',
@@ -332,22 +350,21 @@ def main(args=None):
 		'training_set/carotte/5',
 		'training_set/mais/2',
 		'training_set/mais/7',
-		# 'training_set/mais/7-2',
 		'training_set/mais/6',
-		'training_set/montoldre_05-2019/mais',
-		'training_set/montoldre_05-2019/haricot',
-		# 'training_set/database_operose',
 		'validation_set',
+		# 'training_set/montoldre_05-2019/mais',
+		# 'training_set/montoldre_05-2019/haricot',
+		# 'training_set/mais/7-2',
+		# 'training_set/database_operose',
 		# 'validation_set_challenge'
 		]
 
 	folders = [os.path.join(base_path, folder) for folder in folders]
 
+	classes         = ['mais', 'haricot', 'carotte']
 	names_to_labels = {'mais': 0, 'haricot': 1, 'carotte': 2}
-	classes = ['mais', 'haricot', 'carotte']
 	# names_to_labels = {'mais_tige': 0, 'haricot_tige': 1}
-	# classes = {'mais_tige', 'haricot_tige'}
-
+	# classes         = {'mais_tige', 'haricot_tige'}
 
 	yolo_path = '/home/deepwater/yolo/'
 	csv_train = '/home/deepwater/train.csv'
@@ -364,6 +381,7 @@ def main(args=None):
 
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
 	# add_negative_image('/home/deepwater/github/darknet/data/train/')
+	test.tile_database(boundingBoxes)
 
 if __name__ == '__main__':
 	main()

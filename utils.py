@@ -60,8 +60,8 @@ def convertToRelativeValues(size, box):
     h = box[3] - box[2]
     x = cx * dw
     y = cy * dh
-    w = w * dw
-    h = h * dh
+    w = w * dw # Inféré comme du float car dw est float
+    h = h * dh # Inféré comme du float car dh est float
     # x,y => (bounding_box_center)/width_of_the_image
     # w => bounding_box_width / width_of_the_image
     # h => bounding_box_height / height_of_the_image
@@ -85,6 +85,7 @@ def convertToAbsoluteValues(size, box):
         xEnd = size[0] - 1
     if yEnd >= size[1]:
         yEnd = size[1] - 1
+    # (xMin, yMin, Xmax, yMax) !!!
     return (xIn, yIn, xEnd, yEnd)
 
 
