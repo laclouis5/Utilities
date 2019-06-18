@@ -381,7 +381,8 @@ def main(args=None):
 
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
 	# add_negative_image('/home/deepwater/github/darknet/data/train/')
-	test.tile_database(boundingBoxes)
+	# test.tile_database(boundingBoxes)
+	test.get_square_database(yolo_path, '/home/deepwater/yolo_2/')
 
 if __name__ == '__main__':
 	main()

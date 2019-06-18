@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import cv2 as cv
 from PIL import Image, ImageDraw
+import os
 
 def egi_mask(image, thresh=1.15):
     image_np = np.array(image).astype(float)
@@ -166,6 +167,78 @@ def tile_database(boundingBoxes):
             imagette = image_in.crop([k, l, k + tile_size, l + tile_size])
             imagette.save('haricot_{}.jpg'.format(index))
             index += 1
+
+
+def get_square_database(yolo_dir, save_dir=''):
+    train_dir = os.path.join(yolo_dir, 'train/')
+    val_dir   = os.path.join(yolo_dir, 'val/')
+
+    train_folder = 'train/'
+    val_folder   = 'val/'
+
+    for d, directory in zip([train_folder, val_folder], [train_dir, val_dir]):
+        images = [os.path.join(directory, item) for item in os.listdir(directory)]
+        images = [item for item in images if os.path.splitext(item)[1] == '.jpg']
+
+        # for image in images:
+        #     img = Image.open(image)
+        #     (img_w, img_h) = img.size
+        #
+        #     if img_h < img_w:
+        #         bbox = [round(float(img_w)/2 - float(img_h)/2), 0, round(float(img_w)/2 + float(img_h)/2), img_h]
+        #         img_out = img.crop(bbox)
+        #     elif img_w < img_h:
+        #         bbox = [0, round(float(img_h)/2 - float(img_w)/2), img_w, round(float(img_h)/2 + float(img_h)/2)]
+        #         img_out = img.crop(bbox)
+        #     else:
+        #         img_out = img
+        #
+        #     assert img_out.size[0] == img_out.size[1], "Can't crop to a square shape."
+        #
+        #     # print(os.path.join(save_dir, d, os.path.basename(image)))
+        #     img_out.save(os.path.join(save_dir, d, os.path.basename(image)))
+
+        annotations = [os.path.join(directory, item) for item in os.listdir(directory)]
+        annotations = [item for item in annotations if os.path.splitext(item)[1] == '.txt']
+
+        for annotation in annotations:
+            content_out = ''
+            corresp_img = os.path.splitext(annotation)[0] + '.jpg'
+            (img_w, img_h) = Image.open(corresp_img).size
+
+            if img_h < img_w:
+                (w_lim_1, w_lim_2) = round(float(img_w)/2 - float(img_h)/2), round(float(img_w)/2 + float(img_h)/2)
+
+                with open(annotation, 'r') as f:
+                    content = f.readlines()
+                    content = [line.strip() for line in content]
+
+                    for line in content:
+                        line = line.split()
+                        (label, x, y, w, h) = line[0], float(line[1]), float(line[2]), float(line[3]), float(line[4])
+
+                        if (x*img_w < w_lim_1 or x*img_w > w_lim_2):
+                            print('out: {} for: {} or {}'.format(x*img_w, w_lim_1, w_lim_2))
+                            
+                            new_box = (label, )
+
+            elif img_w < img_h:
+                (h_lim_1, h_lim_2) = round(float(img_h)/2 - float(img_w)/2), round(float(img_h)/2 + float(img_h)/2)
+
+                with open(annotation, 'r') as f:
+                    content = f.readlines()
+                    content = [line.strip() for line in content]
+
+                    for line in content:
+                        line = line.split()
+                        (label, x, y, w, h) = line[0], float(line[1]), float(line[2]), float(line[3]), float(line[4])
+
+                        if (y*img_h < h_lim_1 or y*img_h > h_lim_2):
+                            print('out')
+
+            else:
+                annotation_out = annotation
+
 
 # image = io.imread("data/carotte.jpg")
 # mask = egi_mask(image)

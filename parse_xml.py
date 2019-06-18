@@ -15,8 +15,7 @@ def parse_xml(directories, classes=None):
     xml_files = []
     for directory in directories:
         items = os.listdir(directory)
-        items = [os.path.join(directory, item) for item in items if os.path.splitext(item)[1] == '.xml']
-        xml_files += items
+        [xml_files.append(os.path.join(directory, item)) for item in items if os.path.splitext(item)[1] == '.xml']
 
     allBoundingBoxes = BoundingBoxes()
 
