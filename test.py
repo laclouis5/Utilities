@@ -6,6 +6,10 @@ from mpl_toolkits.mplot3d import Axes3D
 import cv2 as cv
 from PIL import Image, ImageDraw
 import os
+from joblib import Parallel, delayed
+from BoundingBoxes import BoundingBoxes
+from BoundingBox import BoundingBox
+from utils import *
 
 def egi_mask(image, thresh=1.15):
     image_np = np.array(image).astype(float)
@@ -180,48 +184,86 @@ def get_square_database(yolo_dir, save_dir=''):
         images = [os.path.join(directory, item) for item in os.listdir(directory)]
         images = [item for item in images if os.path.splitext(item)[1] == '.jpg']
 
-        # for image in images:
-        #     img = Image.open(image)
-        #     (img_w, img_h) = img.size
-        #
-        #     if img_h < img_w:
-        #         bbox = [round(float(img_w)/2 - float(img_h)/2), 0, round(float(img_w)/2 + float(img_h)/2), img_h]
-        #         img_out = img.crop(bbox)
-        #     elif img_w < img_h:
-        #         bbox = [0, round(float(img_h)/2 - float(img_w)/2), img_w, round(float(img_h)/2 + float(img_h)/2)]
-        #         img_out = img.crop(bbox)
-        #     else:
-        #         img_out = img
-        #
-        #     assert img_out.size[0] == img_out.size[1], "Can't crop to a square shape."
-        #
-        #     # print(os.path.join(save_dir, d, os.path.basename(image)))
-        #     img_out.save(os.path.join(save_dir, d, os.path.basename(image)))
+        for image in images:
+            img = Image.open(image)
+            (img_w, img_h) = img.size
+
+            if img_h < img_w:
+                bbox = [round(float(img_w)/2 - float(img_h)/2), 0, round(float(img_w)/2 + float(img_h)/2), img_h]
+                img_out = img.crop(bbox)
+            elif img_w < img_h:
+                bbox = [0, round(float(img_h)/2 - float(img_w)/2), img_w, round(float(img_h)/2 + float(img_h)/2)]
+                img_out = img.crop(bbox)
+            else:
+                img_out = img
+
+            assert img_out.size[0] == img_out.size[1], "Can't crop to a square shape."
+
+            # print(os.path.join(save_dir, d, os.path.basename(image)))
+            img_out.save(os.path.join(save_dir, d, os.path.basename(image)))
 
         annotations = [os.path.join(directory, item) for item in os.listdir(directory)]
         annotations = [item for item in annotations if os.path.splitext(item)[1] == '.txt']
 
         for annotation in annotations:
-            content_out = ''
+            content_out = []
             corresp_img = os.path.splitext(annotation)[0] + '.jpg'
             (img_w, img_h) = Image.open(corresp_img).size
 
+            # If image is in landscape
             if img_h < img_w:
+                print("In landscape mode: {} by {}".format(img_w, img_h))
+                # Here are abs coords of square bounds (left and right)
                 (w_lim_1, w_lim_2) = round(float(img_w)/2 - float(img_h)/2), round(float(img_w)/2 + float(img_h)/2)
 
                 with open(annotation, 'r') as f:
+                    print("Reading annotation...")
                     content = f.readlines()
                     content = [line.strip() for line in content]
 
                     for line in content:
+                        print("Reading a line...")
                         line = line.split()
+                        # Get relative coords (in old coords system)
                         (label, x, y, w, h) = line[0], float(line[1]), float(line[2]), float(line[3]), float(line[4])
+                        print("Line is: {} {} {} {} {}".format(label, x, y, w, h))
 
-                        if (x*img_w < w_lim_1 or x*img_w > w_lim_2):
-                            print('out: {} for: {} or {}'.format(x*img_w, w_lim_1, w_lim_2))
-                            
-                            new_box = (label, )
+                        # If bbox is not out of the new square frame
+                        if not (x*img_w < w_lim_1 or x*img_w > w_lim_2):
+                            print("In square bounds")
+                            # But if bbox spans out of one bound (l or r)
+                            if (x - w/2.0) < (float(w_lim_1)/img_w):
+                                print("Spans out of left bound")
+                                # Then adjust bbox to fit in the square
+                                w = w - (float(w_lim_1)/img_w - (x - w/2.0))
+                                x = float(w_lim_1+1)/img_w + w/2.0
+                            if (x + w/2.0) > (float(w_lim_2)/img_w):
+                                print("Span out of right bound")
+                                w = w - (x + w/2.0 - float(w_lim_2)/img_w)
+                                x = float(w_lim_2)/img_w - w/2.0
+                            else:
+                                print("Does not spans outside")
 
+                        # If out of bounds...
+                        else:
+                            print("Out of square bounds")
+                            # ...do not process the line
+                            continue
+
+                        # Do not forget to convert from old coord sys to new one
+                        x = (x*img_w - float(w_lim_1))/float(w_lim_2 - w_lim_1)
+                        w = w*img_w/float(w_lim_2 - w_lim_1)
+
+                        assert x >= 0, "Value was {}".format(x)
+                        assert x <= 1, "Value was {}".format(x)
+                        assert (x - w/2) >= 0, "Value was {}".format(x - w/2)
+                        assert (x + w/2) <= 1, "Value was {}".format(x + w/2)
+
+                        new_line = "{} {} {} {} {}\n".format(label, x, y, w, h)
+                        content_out.append(new_line)
+
+
+            # If image is in portrait
             elif img_w < img_h:
                 (h_lim_1, h_lim_2) = round(float(img_h)/2 - float(img_w)/2), round(float(img_h)/2 + float(img_h)/2)
 
@@ -233,12 +275,87 @@ def get_square_database(yolo_dir, save_dir=''):
                         line = line.split()
                         (label, x, y, w, h) = line[0], float(line[1]), float(line[2]), float(line[3]), float(line[4])
 
-                        if (y*img_h < h_lim_1 or y*img_h > h_lim_2):
+                        if not (y*img_h < h_lim_1 or y*img_h > h_lim_2):
                             print('out')
 
             else:
                 annotation_out = annotation
 
+            # Write updated content to TXt file
+            with open(os.path.join(save_dir, d, os.path.basename(annotation)), 'w') as f:
+                f.writelines(content_out)
+
+
+def draw_bbox_images(folder, save_dir):
+    # Attention fonction à la zeub juste pour tester
+    images = [os.path.join(folder, item) for item in os.listdir(folder)]
+    images = [item for item in images if os.path.splitext(item)[1] == '.jpg']
+    colors = [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255)]
+
+    for image in images:
+        img = Image.open(image)
+        (img_w, img_h) = img.size
+
+        annotation = os.path.splitext(image)[0] + '.txt'
+        with open(annotation, 'r') as f:
+            content = f.readlines()
+
+        content = [line.strip().split() for line in content]
+        img_draw = ImageDraw.Draw(img)
+
+        for line in content:
+            (label, x, y, w, h) = int(line[0]), float(line[1]), float(line[2]), float(line[3]), float(line[4])
+            xmin = (x - w/2)*img_w
+            xmax = (x + w/2)*img_w
+            ymin = (y - h/2)*img_h
+            ymax = (y + h/2)*img_h
+            img_draw.rectangle([xmin, ymin, xmax, ymax], outline=colors[label])
+
+        print(os.path.join(save_dir, os.path.basename(image)))
+        img.save(os.path.join(save_dir, os.path.basename(image)))
+
+
+def read_txt_annotation_file(file_path, img_size, labels):
+    bounding_boxes = BoundingBoxes(bounding_boxes=[])
+    image_name = os.path.basename(os.path.splitext(file_path)[0] + '.jpg')
+
+    with open(file_path, 'r') as f:
+        content = f.readlines()
+        content = [line.strip().split() for line in content]
+
+    for det in content:
+        (label, x, y, w, h) = int(det[0]), float(det[1]), float(det[2]), float(det[3]), float(det[4])
+        bounding_boxes.addBoundingBox(BoundingBox(imageName=image_name, classId=labels[label], x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=img_size))
+    return bounding_boxes
+
+
+def parse_yolo_folder(data_dir, labels):
+    annotations = os.listdir(data_dir)
+    annotations = [os.path.join(data_dir, item) for item in annotations if os.path.splitext(item)[1] == '.txt']
+    images = [os.path.splitext(item)[0] + '.jpg' for item in annotations]
+
+    bounding_boxes = BoundingBoxes(bounding_boxes=[])
+    for (img, annot) in zip(images, annotations):
+        img_size = Image.open(img).size
+        image_boxes = read_txt_annotation_file(annot, img_size, labels)
+        [bounding_boxes.addBoundingBox(bb) for bb in image_boxes.getBoundingBoxes()]
+
+    return bounding_boxes
+
+
+def parse_yolo_dir(directory, labels, disp_stats=False):
+    train_dir = os.path.join(directory, "train/")
+    val_dir = os.path.join(directory, "val/")
+
+    train_boxes = parse_yolo_folder(train_dir, labels)
+    val_boxes = parse_yolo_folder(val_dir, labels)
+
+    if disp_stats:
+        stat_boxes = BoundingBoxes(bounding_boxes=train_boxes.getBoundingBoxes())
+        stat_boxes.addBoundingBox(val_boxes.getBoundingBoxes())
+        train_boxes.stats()
+
+    return train_boxes, val_boxes
 
 # image = io.imread("data/carotte.jpg")
 # mask = egi_mask(image)

@@ -331,7 +331,7 @@ def get_image_sizes(folders):
 					shape = image.shape
 					sizes.append(shape)
 				except:
-					print('Error occured during while reading: {}'.format(full_path))
+					print('Error occured while reading: {}'.format(full_path))
 	print(set(sizes))
 
 
@@ -352,8 +352,8 @@ def main(args=None):
 		'training_set/mais/7',
 		'training_set/mais/6',
 		'validation_set',
-		# 'training_set/montoldre_05-2019/mais',
-		# 'training_set/montoldre_05-2019/haricot',
+		'training_set/montoldre_05-2019/mais',
+		'training_set/montoldre_05-2019/haricot',
 		# 'training_set/mais/7-2',
 		# 'training_set/database_operose',
 		# 'validation_set_challenge'
@@ -365,24 +365,20 @@ def main(args=None):
 	names_to_labels = {'mais': 0, 'haricot': 1, 'carotte': 2}
 	# names_to_labels = {'mais_tige': 0, 'haricot_tige': 1}
 	# classes         = {'mais_tige', 'haricot_tige'}
-
 	yolo_path = '/home/deepwater/yolo/'
-	csv_train = '/home/deepwater/train.csv'
-	csv_val   = '/home/deepwater/val.csv'
 
 	clean_xml_files(folders)
-
 	boundingBoxes = parse_xml(folders, classes)
-
-	print('Classes: ', boundingBoxes.getClasses())
-	print('Total boxes: {}'.format(boundingBoxes.count()))
-	for key, value in boundingBoxes.stats().items():
-		print('{}: {}'.format(key, value))
+	boundingBoxes.stats()
 
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
+
 	# add_negative_image('/home/deepwater/github/darknet/data/train/')
 	# test.tile_database(boundingBoxes)
-	test.get_square_database(yolo_path, '/home/deepwater/yolo_2/')
+	# test.get_square_database(yolo_path, '/home/deepwater/yolo_2/')
+	# test.draw_bbox_images("/home/deepwater/yolo_2/val/", "/home/deepwater/yolo_2/result/")
+
+	train_b, val_b = test.parse_yolo_dir(yolo_path, classes)
 
 if __name__ == '__main__':
 	main()

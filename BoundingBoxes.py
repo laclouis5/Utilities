@@ -19,7 +19,10 @@ class BoundingBoxes:
         return repr
 
     def addBoundingBox(self, bb):
-        self._boundingBoxes.append(bb)
+        if isinstance(bb, list):
+            self._boundingBoxes.extend(bb)
+        else:
+            self._boundingBoxes.append(bb)
 
     def removeBoundingBox(self, _boundingBox):
         for d in self._boundingBoxes:
@@ -99,11 +102,25 @@ class BoundingBoxes:
     def stats(self):
         classes = self.getClasses()
         stats = dict.fromkeys(classes, 0)
+        stats_image = dict.fromkeys(classes, 0)
+
+        nb_images = len(self.getNames())
+
         for bbox in self._boundingBoxes:
             stats[bbox.getClassId()] += 1
-        # [stats[bbox.getClassId()] += 1 for bbox in self._boundingBoxes]
 
-        return stats
+        for image_name in self.getNames():
+            boxes = self.getBoundingBoxesByImageName(image_name)
+            label = boxes[0].getClassId()
+            stats_image[label] += 1
+
+        print("Total number of images: {}".format(nb_images))
+        for (key, val) in stats_image.items():
+            print("  {}: {}".format(key, val))
+        print("Total number of bounding boxes: {}".format(self.count()))
+        for (key, val) in stats.items():
+            print("  {}: {}".format(key, val))
+
 
     def clone(self):
         newBoundingBoxes = BoundingBoxes()

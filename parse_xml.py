@@ -17,7 +17,7 @@ def parse_xml(directories, classes=None):
         items = os.listdir(directory)
         [xml_files.append(os.path.join(directory, item)) for item in items if os.path.splitext(item)[1] == '.xml']
 
-    allBoundingBoxes = BoundingBoxes()
+    allBoundingBoxes = BoundingBoxes(bounding_boxes=[])
 
     for file in xml_files:
         tree = ET.parse(file).getroot()
