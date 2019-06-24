@@ -43,6 +43,10 @@ class BoundingBoxes:
                 boundingBoxes.append(d)
         return boundingBoxes
 
+    def mapLabels(self, dic):
+        for bbox in self._boundingBoxes:
+            bbox._classId = dic[bbox.getClassId()]
+
     def shuffleBoundingBoxes(self):
         shuffle(self._boundingBoxes)
 

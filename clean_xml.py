@@ -368,17 +368,17 @@ def main(args=None):
 	yolo_path = '/home/deepwater/yolo/'
 
 	clean_xml_files(folders)
-	boundingBoxes = parse_xml(folders, classes)
-	boundingBoxes.stats()
+	# boundingBoxes = parse_xml(folders, classes)
+	# boundingBoxes.stats()
 
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
 
 	# add_negative_image('/home/deepwater/github/darknet/data/train/')
 	# test.tile_database(boundingBoxes)
-	# test.get_square_database(yolo_path, '/home/deepwater/yolo_2/')
-	# test.draw_bbox_images("/home/deepwater/yolo_2/val/", "/home/deepwater/yolo_2/result/")
+	# test.get_square_database("/home/deepwater/github/darknet/data/yolo/", '/home/deepwater/yolo/')
+	test.draw_bbox_images("/home/deepwater/yolo/val/", "/home/deepwater/yolo/result/")
 
-	train_b, val_b = test.parse_yolo_dir(yolo_path, classes)
+	# train_b, val_b = test.parse_yolo_dir(yolo_path)
 
 if __name__ == '__main__':
 	main()

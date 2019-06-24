@@ -200,7 +200,7 @@ def get_square_database(yolo_dir, save_dir=''):
             assert img_out.size[0] == img_out.size[1], "Can't crop to a square shape."
 
             # print(os.path.join(save_dir, d, os.path.basename(image)))
-            img_out.save(os.path.join(save_dir, d, os.path.basename(image)))
+            img_out.save(os.path.join(save_dir, d, os.path.basename(image)), quality=100)
 
         annotations = [os.path.join(directory, item) for item in os.listdir(directory)]
         annotations = [item for item in annotations if os.path.splitext(item)[1] == '.txt']
@@ -315,7 +315,7 @@ def draw_bbox_images(folder, save_dir):
         img.save(os.path.join(save_dir, os.path.basename(image)))
 
 
-def read_txt_annotation_file(file_path, img_size, labels):
+def read_txt_annotation_file(file_path, img_size):
     bounding_boxes = BoundingBoxes(bounding_boxes=[])
     image_name = os.path.basename(os.path.splitext(file_path)[0] + '.jpg')
 
@@ -325,37 +325,37 @@ def read_txt_annotation_file(file_path, img_size, labels):
 
     for det in content:
         (label, x, y, w, h) = int(det[0]), float(det[1]), float(det[2]), float(det[3]), float(det[4])
-        bounding_boxes.addBoundingBox(BoundingBox(imageName=image_name, classId=labels[label], x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=img_size))
+        bounding_boxes.addBoundingBox(BoundingBox(imageName=image_name, classId=label, x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=img_size))
     return bounding_boxes
 
 
-def parse_yolo_folder(data_dir, labels):
+def parse_yolo_folder(data_dir):
     annotations = os.listdir(data_dir)
     annotations = [os.path.join(data_dir, item) for item in annotations if os.path.splitext(item)[1] == '.txt']
     images = [os.path.splitext(item)[0] + '.jpg' for item in annotations]
-
     bounding_boxes = BoundingBoxes(bounding_boxes=[])
+
     for (img, annot) in zip(images, annotations):
         img_size = Image.open(img).size
-        image_boxes = read_txt_annotation_file(annot, img_size, labels)
+        image_boxes = read_txt_annotation_file(annot, img_size)
         [bounding_boxes.addBoundingBox(bb) for bb in image_boxes.getBoundingBoxes()]
 
     return bounding_boxes
 
 
-def parse_yolo_dir(directory, labels, disp_stats=False):
+def parse_yolo_dir(directory, disp_stats=False):
     train_dir = os.path.join(directory, "train/")
     val_dir = os.path.join(directory, "val/")
 
-    train_boxes = parse_yolo_folder(train_dir, labels)
-    val_boxes = parse_yolo_folder(val_dir, labels)
+    train_boxes = parse_yolo_folder(train_dir)
+    val_boxes = parse_yolo_folder(val_dir)
 
     if disp_stats:
-        stat_boxes = BoundingBoxes(bounding_boxes=train_boxes.getBoundingBoxes())
-        stat_boxes.addBoundingBox(val_boxes.getBoundingBoxes())
         train_boxes.stats()
+        val_boxes.stats()
 
     return train_boxes, val_boxes
+
 
 # image = io.imread("data/carotte.jpg")
 # mask = egi_mask(image)
