@@ -326,6 +326,7 @@ def read_txt_annotation_file(file_path, img_size):
     for det in content:
         (label, x, y, w, h) = int(det[0]), float(det[1]), float(det[2]), float(det[3]), float(det[4])
         bounding_boxes.addBoundingBox(BoundingBox(imageName=image_name, classId=label, x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=img_size))
+
     return bounding_boxes
 
 

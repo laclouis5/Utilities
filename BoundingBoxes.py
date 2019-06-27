@@ -15,7 +15,7 @@ class BoundingBoxes:
             if d.getBBType() is BBType.GroundTruth:
                 repr += "{} {} {} {} {}\n".format(d.getClassId(), box[0], box[1], box[2], box[3])
             elif d.getBBType() is BBType.Detected:
-                    repr += "{} {} {} {} {} {}\n".format(d.getClassId, d.getConfidence(), box[0], box[1], box[2], box[3])
+                    repr += "{} {} {} {} {} {}\n".format(d.getClassId(), d.getConfidence(), box[0], box[1], box[2], box[3])
         return repr
 
     def addBoundingBox(self, bb):
