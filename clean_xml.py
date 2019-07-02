@@ -254,33 +254,66 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8):
 		shutil.copy(img_path, os.path.join(save_dir, idenfier + '.jpg'))
 
 
-def add_negative_image(folder):
+def add_no_obj_images(yolo_dir, no_obj_dir, ratio=0.8):
 	'''
-	Never use this function without knowing what it does. It is trully shit coded.
+	Make sure that there is train.txt and val.txt in yolo foler passed
+	as argument.
 	'''
-	images = [item for item in os.listdir(folder) if os.path.splitext(item)[1] == '.jpg']
+	train_dir  = os.path.join(yolo_dir, 'train/')
+	val_dir    = os.path.join(yolo_dir, 'val/')
+	train_file = os.path.join(yolo_dir, 'train.txt')
+	val_file   = os.path.join(yolo_dir, 'val.txt')
 
-	annotations = [os.path.join(folder, os.path.splitext(item)[0] + '.txt') for item in images]
-	annot_exist = [os.path.isfile(item) for item in annotations]
-	empty_annot = [item for i, item in enumerate(annotations) if annot_exist[i] == False]
+	assert os.path.isfile(train_file), 'train.txt does not exist in yolo directory'
+	assert os.path.isfile(val_file), 'val.txt does not exist in yolo directory'
 
-	for item in empty_annot:
-		with open(item, 'w') as f:
+	images      = [item for item in os.listdir(no_obj_dir) if os.path.splitext(item)[1] == '.jpg']
+	annotations = [os.path.splitext(item)[0] + '.txt' for item in images]
+	nb_train_samples = int(0.8*float(len(images)))
+
+	# Train folder
+	for (image, annotation) in zip(images[:nb_train_samples], annotations[:nb_train_samples]):
+		image_path      = os.path.join(no_obj_dir, image)
+		save_image_path = os.path.join(train_dir, image)
+		save_annot_path = os.path.join(train_dir, annotation)
+		if os.path.exists(save_image_path):
+			print('Image {} already exists in yolo train folder'.format(image))
+			continue
+		# Else
+		shutil.copy(image_path, save_image_path)
+		with open(save_annot_path, 'w') as f:
 			f.write('')
+		with open(train_file, 'a') as f:
+			f.write(os.path.join('data/train/', image) + '\n')
 
-	with open('/home/deepwater/github/darknet/data/tmp.txt', 'a') as f:
-		for item in empty_annot:
-			f.write(os.path.join('data/train/', os.path.split(os.path.splitext(item)[0])[1] + '.jpg') + '\n')
+	# Val folder
+	for (image, annotation) in zip(images[nb_train_samples:], annotations[nb_train_samples:]):
+		image_path      = os.path.join(no_obj_dir, image)
+		save_image_path = os.path.join(val_dir, image)
+		save_annot_path = os.path.join(val_dir, annotation)
+		if os.path.exists(save_image_path):
+			print('Image {} already exists in yolo val folder'.format(image))
+			continue
+		# Else
+		shutil.copy(image_path, save_image_path)
+		with open(save_annot_path, 'w') as f:
+			f.write('')
+		with open(val_file, 'a') as f:
+			f.write(os.path.join('data/val/', image) + '\n')
 
-	with open('/home/deepwater/github/darknet/data/tmp.txt', 'r') as f:
+	#Train
+	with open(train_file, 'r') as f:
 		content = f.readlines()
-
 	shuffle(content)
-
-	with open('/home/deepwater/github/darknet/data/train_3.txt', 'w') as f:
+	with open(train_file, 'w') as f:
 		f.writelines(content)
 
-	print('Written files:', len(empty_annot))
+	#Val
+	with open(val_file, 'r') as f:
+		content = f.readlines()
+	shuffle(content)
+	with open(val_file, 'w') as f:
+		f.writelines(content)
 
 
 def remove_to_close(folder, save_dir, class_id, margin=0.001):
@@ -310,6 +343,9 @@ def remove_to_close(folder, save_dir, class_id, margin=0.001):
 
 
 def change_path(folder, new_name, new_file):
+	'''
+	I dont remember why I wrote this function
+	'''
 	with open(folder, 'r') as f:
 		content = f.readlines()
 
@@ -359,26 +395,27 @@ def main(args=None):
 		# 'validation_set_challenge'
 		]
 
-	folders = [os.path.join(base_path, folder) for folder in folders]
+	folders    = [os.path.join(base_path, folder) for folder in folders]
+	no_obj_dir = '/media/deepwater/DATA/Shared/Louis/RetinaNet/datasets/training_set/no_obj/'
 
-	classes         = ['mais', 'haricot', 'carotte']
-	names_to_labels = {'mais': 0, 'haricot': 1, 'carotte': 2}
+	# classes         = ['mais', 'haricot', 'carotte']
+	# names_to_labels = {'mais': 0, 'haricot': 1, 'carotte': 2}
 	# names_to_labels = {'mais_tige': 0, 'haricot_tige': 1}
 	# classes         = {'mais_tige', 'haricot_tige'}
+	classes         = ['mais', 'haricot']
+	names_to_labels = {'mais': 0, 'haricot': 1}
+
 	yolo_path = '/home/deepwater/yolo/'
 
 	clean_xml_files(folders)
-	# boundingBoxes = parse_xml(folders, classes)
-	# boundingBoxes.stats()
+	boundingBoxes = parse_xml(folders, classes)
+	boundingBoxes.stats()
 
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
+	# add_no_obj_images(yolo_path, no_obj_dir)
 
-	# add_negative_image('/home/deepwater/github/darknet/data/train/')
-	# test.tile_database(boundingBoxes)
-	# test.get_square_database("/home/deepwater/github/darknet/data/yolo/", '/home/deepwater/yolo/')
+	# test.get_square_database(yolo_path, '/home/deepwater/yolo_tige_sqr/')
 	test.draw_bbox_images("/home/deepwater/yolo/val/", "/home/deepwater/yolo/result/")
-
-	# train_b, val_b = test.parse_yolo_dir(yolo_path)
 
 if __name__ == '__main__':
 	main()
