@@ -136,6 +136,9 @@ def plot_bbox_distribution(boundingBoxes):
 
 
 def tile_database(boundingBoxes):
+    '''
+    Not finished.
+    '''
     # parameters
     (im_w, im_h) = 2448, 2048
     main_tile_size = 1664
@@ -174,6 +177,10 @@ def tile_database(boundingBoxes):
 
 
 def get_square_database(yolo_dir, save_dir=''):
+    '''
+    Takes as input the path to a yolo database. Crops this database to a
+    square one and saves it in save_dir.
+    '''
     train_dir = os.path.join(yolo_dir, 'train/')
     val_dir   = os.path.join(yolo_dir, 'val/')
 
@@ -287,6 +294,10 @@ def get_square_database(yolo_dir, save_dir=''):
 
 
 def draw_bbox_images(folder, save_dir):
+    '''
+    Takes as input a folder with images and yolo-style annotation (TXT file).
+    Saves images with bounding boxes drawn in the save_dir folder.
+    '''
     # Attention fonction à la zeub juste pour tester
     images = [os.path.join(folder, item) for item in os.listdir(folder)]
     images = [item for item in images if os.path.splitext(item)[1] == '.jpg']
@@ -316,6 +327,10 @@ def draw_bbox_images(folder, save_dir):
 
 
 def read_txt_annotation_file(file_path, img_size):
+    '''
+    Input are TXT file path and corresponding image size. Output are
+    bounding boxes as a BoundingBox object.
+    '''
     bounding_boxes = BoundingBoxes(bounding_boxes=[])
     image_name = os.path.basename(os.path.splitext(file_path)[0] + '.jpg')
 
@@ -331,6 +346,10 @@ def read_txt_annotation_file(file_path, img_size):
 
 
 def parse_yolo_folder(data_dir):
+    '''
+    Input is either train dir or val dir of yolo folder. This function reads
+    TXT annotation files and returns a BoundingBoxes object.
+    '''
     annotations = os.listdir(data_dir)
     annotations = [os.path.join(data_dir, item) for item in annotations if os.path.splitext(item)[1] == '.txt']
     images = [os.path.splitext(item)[0] + '.jpg' for item in annotations]
@@ -345,6 +364,10 @@ def parse_yolo_folder(data_dir):
 
 
 def parse_yolo_dir(directory, disp_stats=False):
+    '''
+    Input is the yolo folder containing train and val subfolders. Returns a
+    BoundingBoxes object.
+    '''
     train_dir = os.path.join(directory, "train/")
     val_dir = os.path.join(directory, "val/")
 

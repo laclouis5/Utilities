@@ -388,8 +388,16 @@ def main(args=None):
 		'training_set/mais/7',
 		'training_set/mais/6',
 		'validation_set',
-		'training_set/montoldre_05-2019/mais',
-		'training_set/montoldre_05-2019/haricot',
+		'training_set/2019-05-23_montoldre/mais/1',
+		'training_set/2019-05-23_montoldre/mais/2',
+		'training_set/2019-05-23_montoldre/mais/3',
+		'training_set/2019-05-23_montoldre/mais/4',
+		'training_set/2019-05-23_montoldre/haricot/1',
+		'training_set/2019-05-23_montoldre/haricot/2',
+		'training_set/2019-05-23_montoldre/haricot/3',
+		'training_set/2019-05-23_montoldre/haricot/4',
+		"training_set/2019-07-03_larrere/poireau/3",
+		"training_set/2019-07-03_larrere/poireau/4"
 		# 'training_set/mais/7-2',
 		# 'training_set/database_operose',
 		# 'validation_set_challenge'
@@ -400,10 +408,11 @@ def main(args=None):
 
 	# classes         = ['mais', 'haricot', 'carotte']
 	# names_to_labels = {'mais': 0, 'haricot': 1, 'carotte': 2}
-	# names_to_labels = {'mais_tige': 0, 'haricot_tige': 1}
 	# classes         = {'mais_tige', 'haricot_tige'}
-	classes         = ['mais', 'haricot']
-	names_to_labels = {'mais': 0, 'haricot': 1}
+	# names_to_labels = {'mais_tige': 0, 'haricot_tige': 1}
+	classes         = ['poireau_tige']
+	names_to_labels = {'poireau_tige': 0}
+
 
 	yolo_path = '/home/deepwater/yolo/'
 
@@ -415,7 +424,8 @@ def main(args=None):
 	# add_no_obj_images(yolo_path, no_obj_dir)
 
 	# test.get_square_database(yolo_path, '/home/deepwater/yolo_tige_sqr/')
-	test.draw_bbox_images("/home/deepwater/yolo/val/", "/home/deepwater/yolo/result/")
+	# test.draw_bbox_images("/home/deepwater/yolo/val/", "/home/deepwater/yolo/result/")
+	# test.crop_annotation_to_square()
 
 if __name__ == '__main__':
 	main()
