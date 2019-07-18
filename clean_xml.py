@@ -371,6 +371,28 @@ def get_image_sizes(folders):
 	print(set(sizes))
 
 
+def replace_label(old_label, new_label, folders):
+	'''
+	Be careful when using this function, it changes labels in xml_files.
+	Consider backing up your annotations before.
+	'''
+	count = 0
+	for folder in folders:
+		xml_files = [os.path.join(folder, item) for item in os.listdir(folder) if os.path.splitext(item)[1] == '.xml']
+
+		for xml_file in xml_files:
+			tree = ET.parse(xml_file).getroot()
+
+			for obj in tree.findall('object'):
+				label = obj.find('name').text
+				if label == old_label:
+					count += 1
+					obj.find('name').text = new_label
+
+			with open(xml_file, 'w') as f:
+				tree_str = ET.tostring(tree, encoding='unicode')
+				f.write(tree_str)
+
 def main(args=None):
 	base_path = '/media/deepwater/DATA/Shared/Louis/RetinaNet/datasets/'
 
@@ -406,13 +428,12 @@ def main(args=None):
 	folders    = [os.path.join(base_path, folder) for folder in folders]
 	no_obj_dir = '/media/deepwater/DATA/Shared/Louis/RetinaNet/datasets/training_set/no_obj/'
 
-	# classes         = ['mais', 'haricot', 'carotte']
-	# names_to_labels = {'mais': 0, 'haricot': 1, 'carotte': 2}
-	# classes         = {'mais_tige', 'haricot_tige'}
-	# names_to_labels = {'mais_tige': 0, 'haricot_tige': 1}
-	classes         = ['poireau_tige']
-	names_to_labels = {'poireau_tige': 0}
 
+	classes         = ['mais','haricot', 'corotte', 'poireau', 'mais_tige', 'mais_tige_old', 'haricot_tige', 'haricot_tige_old', 'poireau_tige']
+	names_to_labels = {'poireau': 0, 'poireau_tige': 1}
+
+	# classes         = ['poireau', 'poireau_tige']
+	# names_to_labels = {'poireau': 0, 'poireau_tige': 1}
 
 	yolo_path = '/home/deepwater/yolo/'
 

@@ -102,29 +102,15 @@ class BoundingBoxes:
             if d.getBBType() == bbType:  # get only specified bb type
                 count += 1
         return count
-
+        
     def stats(self):
-        classes = self.getClasses()
-        stats = dict.fromkeys(classes, 0)
-        stats_image = dict.fromkeys(classes, 0)
+        print("{:<20} {:<15} {}".format("Label:", "Nb Images:", "Nb Annotations:"))
+        for label in self.getClasses():
+            boxes = self.getBoundingBoxByClass(label)
+            nb_images = len(set([item.getImageName() for item in boxes]))
+            nb_annot  = len(boxes)
 
-        nb_images = len(self.getNames())
-
-        for bbox in self._boundingBoxes:
-            stats[bbox.getClassId()] += 1
-
-        for image_name in self.getNames():
-            boxes = self.getBoundingBoxesByImageName(image_name)
-            label = boxes[0].getClassId()
-            stats_image[label] += 1
-
-        print("Total number of images: {}".format(nb_images))
-        for (key, val) in stats_image.items():
-            print("  {}: {}".format(key, val))
-        print("Total number of bounding boxes: {}".format(self.count()))
-        for (key, val) in stats.items():
-            print("  {}: {}".format(key, val))
-
+            print("{:<20} {:<15} {}".format(label, nb_images, nb_annot))
 
     def clone(self):
         newBoundingBoxes = BoundingBoxes()
