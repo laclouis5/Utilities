@@ -223,11 +223,13 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8):
 	names     = boundingBoxes.getNames()
 	shuffle(names)
 
-	for i, name in enumerate(names):
+	number_train = round(ratio*len(names))
+
+	for (i, name) in enumerate(names):
 		unique_ID += 1
 		yolo_rep   = []
 		img_path   = os.path.splitext(name)[0] + '.jpg'
-		if i < len(names) * ratio:
+		if i < number_train:
 			save_dir = train_dir
 		else:
 			save_dir = val_dir
@@ -242,16 +244,16 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8):
 		with open(os.path.join(save_dir, idenfier + '.txt'), 'w') as f_write:
 			f_write.writelines(yolo_rep)
 
-		with open(train_file, 'w') as f_write_1, open(val_file, 'w') as f_write_2:
-			for item in iglob(os.path.join(train_dir, '*.jpg')):
-				tail = os.path.split(item)[1]
-				f_write_1.write('{}\n'.format(os.path.join('data/train/', tail)))
-
-			for item in iglob(os.path.join(val_dir, '*.jpg')):
-				tail = os.path.split(item)[1]
-				f_write_2.write('{}\n'.format(os.path.join('data/val/', tail)))
-
 		shutil.copy(img_path, os.path.join(save_dir, idenfier + '.jpg'))
+
+	with open(train_file, 'w') as f_write_1, open(val_file, 'w') as f_write_2:
+		for item in iglob(os.path.join(train_dir, '*.jpg')):
+			tail = os.path.split(item)[1]
+			f_write_1.write('{}\n'.format(os.path.join('data/train/', tail)))
+
+		for item in iglob(os.path.join(val_dir, '*.jpg')):
+			tail = os.path.split(item)[1]
+			f_write_2.write('{}\n'.format(os.path.join('data/val/', tail)))
 
 
 def add_no_obj_images(yolo_dir, no_obj_dir, ratio=0.8):
@@ -269,7 +271,7 @@ def add_no_obj_images(yolo_dir, no_obj_dir, ratio=0.8):
 
 	images      = [item for item in os.listdir(no_obj_dir) if os.path.splitext(item)[1] == '.jpg']
 	annotations = [os.path.splitext(item)[0] + '.txt' for item in images]
-	nb_train_samples = int(0.8*float(len(images)))
+	nb_train_samples = round(ratio*len(images))
 
 	# Train folder
 	for (image, annotation) in zip(images[:nb_train_samples], annotations[:nb_train_samples]):
@@ -429,8 +431,8 @@ def main(args=None):
 	no_obj_dir = '/media/deepwater/DATA/Shared/Louis/RetinaNet/datasets/training_set/no_obj/'
 
 
-	classes         = ['mais','haricot', 'corotte', 'poireau', 'mais_tige', 'mais_tige_old', 'haricot_tige', 'haricot_tige_old', 'poireau_tige']
-	names_to_labels = {'poireau': 0, 'poireau_tige': 1}
+	classes         = ['mais','haricot', 'poireau', 'mais_tige', 'haricot_tige', 'poireau_tige']
+	names_to_labels = {'mais': 0,'haricot': 1, 'poireau': 2, 'mais_tige': 3, 'haricot_tige': 4, 'poireau_tige': 5}
 
 	# classes         = ['poireau', 'poireau_tige']
 	# names_to_labels = {'poireau': 0, 'poireau_tige': 1}
@@ -441,8 +443,8 @@ def main(args=None):
 	boundingBoxes = parse_xml(folders, classes)
 	boundingBoxes.stats()
 
-	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
-	# add_no_obj_images(yolo_path, no_obj_dir)
+	xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
+	add_no_obj_images(yolo_path, no_obj_dir)
 
 	# test.get_square_database(yolo_path, '/home/deepwater/yolo_tige_sqr/')
 	# test.draw_bbox_images("/home/deepwater/yolo/val/", "/home/deepwater/yolo/result/")
