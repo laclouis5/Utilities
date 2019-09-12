@@ -13,6 +13,7 @@ from BoundingBox import BoundingBox
 from glob import glob, iglob
 from Evaluator import *
 from skimage import io
+import PIL
 
 import test
 
@@ -395,6 +396,34 @@ def replace_label(old_label, new_label, folders):
 				tree_str = ET.tostring(tree, encoding='unicode')
 				f.write(tree_str)
 
+
+def draw_center_point(bounding_boxes, save_path="save/"):
+	if not os.path.isdir(save_path):
+		os.mkdir(save_path)
+
+	for name in bounding_boxes.getNames():
+		image = os.path.splitext(name)[0] + ".jpg"
+		img_save = os.path.join(save_path, os.path.basename(image))
+		boxes = bounding_boxes.getBoundingBoxesByImageName(name)
+		img_PIL = PIL.Image.open(image)
+		img_draw = PIL.ImageDraw.Draw(img_PIL)
+		radius = 10
+
+		for box in boxes:
+			xmin, ymin, xmax, ymax = box.getAbsoluteBoundingBox(BBFormat.XYX2Y2)
+			w = xmax - xmin
+			h  = ymax - ymin
+			x = xmin + w/2
+			y = ymin + h/2
+			color = "red"
+			x1, y1, x2, y2 = x -radius, y-radius, x+radius, y+radius
+			img_draw.ellipse(xy=(x1, y1, x2, y2),fill=color)
+			img_draw.rectangle(xy=(xmin, ymin, xmax, ymax))
+
+
+		img_PIL.save(img_save)
+
+
 def main(args=None):
 	base_path = '/media/deepwater/DATA/Shared/Louis/RetinaNet/datasets/'
 
@@ -434,8 +463,8 @@ def main(args=None):
 	classes         = ['mais','haricot', 'poireau', 'mais_tige', 'haricot_tige', 'poireau_tige']
 	names_to_labels = {'mais': 0,'haricot': 1, 'poireau': 2, 'mais_tige': 3, 'haricot_tige': 4, 'poireau_tige': 5}
 
-	# classes         = ['poireau', 'poireau_tige']
-	# names_to_labels = {'poireau': 0, 'poireau_tige': 1}
+	# classes         = ['poireau_tige']
+	# names_to_labels = {'poireau_tige': 0}
 
 	yolo_path = '/home/deepwater/yolo/'
 
@@ -449,6 +478,8 @@ def main(args=None):
 	# test.get_square_database(yolo_path, '/home/deepwater/yolo_tige_sqr/')
 	# test.draw_bbox_images("/home/deepwater/yolo/val/", "/home/deepwater/yolo/result/")
 	# test.crop_annotation_to_square()
+
+	# draw_center_point(boundingBoxes)
 
 if __name__ == '__main__':
 	main()
