@@ -128,25 +128,33 @@ class BoundingBox:
         area = (self._w + 1) * (self._h + 1)
         return area
 
-    def __lt__(self, other):
-        return self.getArea() < other.getArea()
 
-    def __eq__(det1, det2):
+    def repr(self):
+        if self._bbType is BBType.GroundTruth:
+            repr += "{} {} {} {} {}\n".format(self._classId, self._x, self._y, self._w, self._h)
+        elif self._bbType is BBType.Detected:
+            repr += "{} {} {} {} {} {}\n".format(self._classId, self._classConfidence, self._x, self._y, self._w, self._h)
+
+
+    @staticmethod
+    def compare(det1, det2):
         det1BB = det1.getAbsoluteBoundingBox()
         det1ImgSize = det1.getImageSize()
         det2BB = det2.getAbsoluteBoundingBox()
         det2ImgSize = det2.getImageSize()
 
         if det1.getClassId() == det2.getClassId() and \
-           det1.getConfidence() == det2.getConfidence() and \
+           det1.classConfidence == det2.classConfidenc() and \
            det1BB[0] == det2BB[0] and \
            det1BB[1] == det2BB[1] and \
            det1BB[2] == det2BB[2] and \
            det1BB[3] == det2BB[3] and \
            det1ImgSize[0] == det1ImgSize[0] and \
            det2ImgSize[1] == det2ImgSize[1]:
-            return True
+           return True
+
         return False
+
 
     @staticmethod
     def clone(boundingBox):

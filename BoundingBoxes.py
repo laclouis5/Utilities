@@ -8,16 +8,6 @@ class BoundingBoxes:
     def __init__(self, bounding_boxes=[]):
         self._boundingBoxes = bounding_boxes
 
-    def repr(self):
-        repr = ""
-        for d in self._boundingBoxes:
-            box = d.getRelativeBoundingBox()
-            if d.getBBType() is BBType.GroundTruth:
-                repr += "{} {} {} {} {}\n".format(d.getClassId(), box[0], box[1], box[2], box[3])
-            elif d.getBBType() is BBType.Detected:
-                    repr += "{} {} {} {} {} {}\n".format(d.getClassId(), d.getConfidence(), box[0], box[1], box[2], box[3])
-        return repr
-
     def addBoundingBox(self, bb):
         if isinstance(bb, list):
             self._boundingBoxes.extend(bb)
@@ -94,6 +84,16 @@ class BoundingBoxes:
     def __len__(self):
         return len(self._boundingBoxes)
 
+    def repr(self):
+        repr = ""
+        for d in self._boundingBoxes:
+            box = d.getRelativeBoundingBox()
+            if d.getBBType() is BBType.GroundTruth:
+                repr += "{} {} {} {} {}\n".format(d.getClassId(), box[0], box[1], box[2], box[3])
+            elif d.getBBType() is BBType.Detected:
+                    repr += "{} {} {} {} {} {}\n".format(d.getClassId(), d.getConfidence(), box[0], box[1], box[2], box[3])
+        return repr
+
     def count(self, bbType=None):
         if bbType is None:  # Return all bounding boxes
             return len(self._boundingBoxes)
@@ -102,7 +102,7 @@ class BoundingBoxes:
             if d.getBBType() == bbType:  # get only specified bb type
                 count += 1
         return count
-        
+
     def stats(self):
         print("{:<20} {:<15} {}".format("Label:", "Nb Images:", "Nb Annotations:"))
         for label in self.getClasses():
