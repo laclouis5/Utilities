@@ -450,15 +450,16 @@ def main(args=None):
 		'training_set/2019-05-23_montoldre/haricot/3',
 		'training_set/2019-05-23_montoldre/haricot/4',
 		"training_set/2019-07-03_larrere/poireau/3",
-		"training_set/2019-07-03_larrere/poireau/4"
-		# 'training_set/mais/7-2',
-		# 'training_set/database_operose',
-		# 'validation_set_challenge'
+		"training_set/2019-07-03_larrere/poireau/4",
+		"training_set/2019-09-25_montoldre/mais",
+		"training_set/2019-09-25_montoldre/haricot",
+		"training_set/2019-10-05_ctifl/mais_1",
+		"training_set/2019-10-05_ctifl/mais_2",
+		"training_set/2019-10-05_ctifl/haricot"
 		]
 
 	folders    = [os.path.join(base_path, folder) for folder in folders]
 	no_obj_dir = '/media/deepwater/DATA/Shared/Louis/RetinaNet/datasets/training_set/no_obj/'
-
 
 	classes         = ['mais','haricot', 'poireau', 'mais_tige', 'haricot_tige', 'poireau_tige']
 	names_to_labels = {'mais': 0,'haricot': 1, 'poireau': 2, 'mais_tige': 3, 'haricot_tige': 4, 'poireau_tige': 5}
