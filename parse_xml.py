@@ -12,6 +12,10 @@ from Evaluator import *
 from utils import *
 
 def parse_xml(directories, classes=None):
+    """
+    Parses a list of directories with XML GT files labeled with labelImg
+    and returns a boundingBoxes object holding boxes. Classes can be filtered.
+    """
     xml_files = []
     for directory in directories:
         items = os.listdir(directory)
