@@ -135,47 +135,6 @@ def plot_bbox_distribution(boundingBoxes):
     plt.show()
 
 
-def tile_database(boundingBoxes):
-    '''
-    Not finished.
-    '''
-    # parameters
-    (im_w, im_h) = 2448, 2048
-    main_tile_size = 1664
-    tile_size = 416
-
-    X1 = [(im_w - main_tile_size)/2 + n*tile_size for n in range(4)]
-    Y1 = [(im_h - main_tile_size)/2 + n*tile_size for n in range(4)]
-
-    X2 = [(im_w - main_tile_size)/2  + tile_size/2 + n*tile_size for n in range(3)]
-    Y2 = [(im_h - main_tile_size)/2  + tile_size/2 + n*tile_size for n in range(3)]
-
-    X1, Y1 = np.meshgrid(X1, Y1)
-    X2, Y2 = np.meshgrid(X2, Y2)
-
-    # out_image = Image.new('RGBA', size=(im_w, im_h))
-    # drawing = ImageDraw.Draw(out_image)
-    # for (i, j) in zip(X1, Y1):
-    #     for (k, l) in zip(i, j):
-    #         drawing.rectangle(xy=[k, l, k +tile_size, l + tile_size], fill=(0, 0, 255, 64))
-    # for (i, j) in zip(X2, Y2):
-    #     for (k, l) in zip(i, j):
-    #         drawing.rectangle([k, l, k + tile_size, l + tile_size], fill=(255, 0, 0, 64))
-
-    image_in = Image.open('haricot.jpg')
-    index = 0
-    for (i, j) in zip(X1, Y1):
-        for (k, l) in zip(i, j):
-            imagette = image_in.crop([k, l, k + tile_size, l + tile_size])
-            imagette.save('haricot_{}.jpg'.format(index))
-            index += 1
-    for (i, j) in zip(X2, Y2):
-        for (k, l) in zip(i, j):
-            imagette = image_in.crop([k, l, k + tile_size, l + tile_size])
-            imagette.save('haricot_{}.jpg'.format(index))
-            index += 1
-
-
 def get_square_database(yolo_dir, save_dir=''):
     '''
     Takes as input the path to a yolo database. Crops this database to a
@@ -379,29 +338,3 @@ def parse_yolo_dir(directory, disp_stats=False):
         val_boxes.stats()
 
     return train_boxes, val_boxes
-
-
-# image = io.imread("data/carotte.jpg")
-# mask = egi_mask(image)
-# image_green = image.copy()
-# image_green[mask==0] = 0
-# # plt.subplot(221)
-# # plt.imshow(image)
-# # plt.subplot(222)
-# # plt.imshow(mask)
-# # plt.subplot(223)
-# # plt.imshow(image_green)
-# # plt.show()
-#
-# # scatter3d(image, mask)
-# #structure_tensor(image)
-#
-# coherence, orientation = compute_struct_tensor("data/im_33.jpg", 32, 10)
-#
-# plt.subplot(121)
-# plt.title("Coherence")
-# plt.imshow(coherence)
-# plt.subplot(122)
-# plt.title("Orientation")
-# plt.imshow(orientation)
-# plt.show()

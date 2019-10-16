@@ -3,7 +3,7 @@ import cv2
 import shutil
 import glob
 
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
 from random import shuffle
 
 from BoundingBox import BoundingBox
@@ -26,7 +26,7 @@ def parse_xml(directories, classes=None):
     for file in xml_files:
         tree = ET.parse(file).getroot()
 
-        name   = tree.find('path').text
+        name   = os.path.join(os.path.dirname(tree.find('path').text), tree.find('filename').text)
         width  = tree.find('size').find('width').text
         height = tree.find('size').find('height').text
 
