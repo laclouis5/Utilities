@@ -4,7 +4,7 @@ This library provides tools for converting VOC style XML to different formats (R
 
 import os
 import shutil
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
 from random import shuffle
 from parse_xml import parse_xml
 from utils import *
@@ -15,41 +15,64 @@ from Evaluator import *
 from skimage import io
 import PIL
 
-import test
+import my_library
 
-def clean_xml_files(folders):
-	'''
-	This function updates the path field of XML files located in 'folders'
-	to reflect the current path of those files. All functions in this package use path written
-	in the 'path' field of XML files so they need to be right.
+def clean_xml_files(folders) :
+	files = []
+	for folder in folders :
+		files += [os.path.join(folder, item) for item in os.listdir(folder) if os.path.splitext(item)[1] == ".xml"]
 
-	You may use this function if XML files are moved to a different location and before
-	using another function of this library.
+	for file in files :
+		tree = ET.parse(file).getroot()
+		tree.find("path").text = file
 
-	FOLDERS - List of absolute paths to folders containing train or test images and XML files.
+		with open(file, "w") as f :
+			content = ET.tostring(tree, encoding="unicode")
+			f.write(content)
 
-	# Admin priviledge may be mandatory.
-	'''
-	print('Changing path name...')
 
-	for folder in folders:
-		for file in os.listdir(folder):
-			# Check if XML file
-			if(os.path.splitext(file)[1] != '.xml'): continue
+def xml_to_csv_2(boundingboxes, save_dir="", ratio=0.8, no_obj_dir=None):
+	names = boundingboxes.getNames()
+	shuffle(names)
 
-			# Retreive the XML tree
-			tree = ET.parse(os.path.join(folder, file)).getroot()
+	nb_train = int(ratio * len(names))
 
-			# Modification of path field
-			path_field      = tree.find('path')
-			path_field.text = os.path.join(folder, file)
+	train = []
+	val = []
+	i = 0
+	for name in names :
+		boxes = boundingboxes.getBoundingBoxesByImageName(name)
 
-			# Update the file
-			with open(os.path.join(folder, file), 'w') as xml_file:
-				tree_str = ET.tostring(tree, encoding='unicode')
-				xml_file.write(tree_str)
+		for box in boxes :
+			(xmin, ymin, xmax, ymax) = box.getAbsoluteBoundingBox(BBFormat.XYX2Y2)
+			label = box.getClassId()
+			name = box.getImageName()
 
-	print('Done!')
+			line = "{},{},{},{},{},{}\n".format(name, int(xmin), int(ymin), int(xmax), int(ymax), label)
+
+			if i < nb_train :
+				train.append(line)
+			else :
+				val.append(line)
+		i += 1
+
+	if no_obj_dir != None:
+		no_obj_images = [os.path.join(no_obj_dir, item) for item in os.listdir(no_obj_dir) if os.path.splitext(item)[1] == '.jpg']
+		nb_train_bo_obj = int(ratio * len(no_obj_images))
+
+		j = 0
+		for no_obj_image in no_obj_images :
+			no_obj_line = "{},,,,,\n".format(no_obj_image)
+			if j < nb_train_bo_obj :
+				train.append(no_obj_line)
+			else :
+				val.append(no_obj_line)
+			j += 1
+
+	with open(os.path.join(save_dir, "train.csv"), "w") as f_train :
+		f_train.writelines(train)
+	with open(os.path.join(save_dir, "val.csv"), "w") as f_val :
+		f_val.writelines(val)
 
 
 def xml_to_csv(folders, csv_path, csv_valid, names_to_labels, ratio=0.8):
@@ -60,10 +83,9 @@ def xml_to_csv(folders, csv_path, csv_valid, names_to_labels, ratio=0.8):
 	FOLDERS - List of absolute paths to folders containing train or test images and XML files.
 
 	CSV_PATH - Absolute path including file name and extention to the CSV file to be generated.
-	For instance '/home/upser_name/train.csv' will create file 'train.csv' in '/home/user_name/'.
+	For instance '/home/user_name/train.csv' will create file 'train.csv' in '/home/user_name/'.
 
-	NAMES_TO_LABELS - Dictionary with object name as key and label number as value. This makes
-	explicit the relation object-label contrary to a list.
+	NAMES_TO_LABELS - Dictionary with object name as key and label number as value.
 	'''
 	print('Transcripting XML to CSV...')
 
@@ -425,7 +447,7 @@ def draw_center_point(bounding_boxes, save_path="save/"):
 
 
 def main(args=None):
-	base_path = '/media/deepwater/DATA/Shared/Louis/RetinaNet/datasets/'
+	base_path = '/media/deepwater/DATA/Shared/Louis/datasets/'
 
 	folders = [
 		'training_set/mais_haricot_feverole_pois/50/1',
@@ -451,7 +473,9 @@ def main(args=None):
 		'training_set/2019-05-23_montoldre/haricot/4',
 		"training_set/2019-07-03_larrere/poireau/3",
 		"training_set/2019-07-03_larrere/poireau/4",
-		"training_set/2019-09-25_montoldre/mais",
+		"training_set/2019-09-25_montoldre/mais/1",
+		"training_set/2019-09-25_montoldre/mais/2",
+		"training_set/2019-09-25_montoldre/mais/3",
 		"training_set/2019-09-25_montoldre/haricot",
 		"training_set/2019-10-05_ctifl/mais_1",
 		"training_set/2019-10-05_ctifl/mais_2",
@@ -459,7 +483,7 @@ def main(args=None):
 		]
 
 	folders    = [os.path.join(base_path, folder) for folder in folders]
-	no_obj_dir = '/media/deepwater/DATA/Shared/Louis/RetinaNet/datasets/training_set/no_obj/'
+	no_obj_dir = '/media/deepwater/DATA/Shared/Louis/datasets/training_set/no_obj/'
 
 	classes         = ['mais','haricot', 'poireau', 'mais_tige', 'haricot_tige', 'poireau_tige']
 	names_to_labels = {'mais': 0,'haricot': 1, 'poireau': 2, 'mais_tige': 3, 'haricot_tige': 4, 'poireau_tige': 5}
@@ -472,9 +496,9 @@ def main(args=None):
 	clean_xml_files(folders)
 	boundingBoxes = parse_xml(folders, classes)
 	boundingBoxes.stats()
-
-	xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
-	add_no_obj_images(yolo_path, no_obj_dir)
+	xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
+	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
+	# add_no_obj_images(yolo_path, no_obj_dir)
 
 	# test.get_square_database(yolo_path, '/home/deepwater/yolo_tige_sqr/')
 	# test.draw_bbox_images("/home/deepwater/yolo/val/", "/home/deepwater/yolo/result/")
