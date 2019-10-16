@@ -112,6 +112,36 @@ class BoundingBoxes:
 
             print("{:<20} {:<15} {}".format(label, nb_images, nb_annot))
 
+    def normalizedSquareBoxes(self):
+        boxes = []
+        for box in self.getBoundingBoxes():
+            if "tige" in box.getClassId():
+                (x, y, _, _) = box.getRelativeBoundingBox()
+                w = 0.05
+                h = 0.05
+                box = BoundingBox(imageName=box.getImageName(), classId=box.getClassId(), x=x, y=y, w=w, h=w, typeCoordinates=CoordinatesType.Relative, imgSize=box.getImageSize(), bbType=box.getBBType(), classConfidence=box.getConfidence(), format=BBFormat.XYWH)
+                boxes.append(box)
+            else:
+                boxes.append(box)
+        return BoundingBoxes(bounding_boxes=boxes)
+
+    def meanSize(self):
+        import matplotlib.pyplot as plt
+        boundingBoxes = self.normalizedSquareBoxes()
+        for label in boundingBoxes.getClasses():
+            boxes = boundingBoxes.getBoundingBoxByClass(label)
+            widths = []
+            heights = []
+            for box in boxes:
+                bbox = box.getAbsoluteBoundingBox()
+                widths.append(bbox[2])
+                heights.append(bbox[3])
+            plt.scatter(widths, heights)
+            plt.title(label)
+            plt.xlim((0, 1000))
+            plt.ylim((0, 1000))
+            plt.show()
+
     def clone(self):
         newBoundingBoxes = BoundingBoxes()
         for d in self._boundingBoxes:

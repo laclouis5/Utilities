@@ -54,14 +54,12 @@ class BoundingBox:
         # If relative coordinates, convert to absolute values
         # For relative coords: (x,y,w,h)=(X_center/img_width , Y_center/img_height)
         if (typeCoordinates == CoordinatesType.Relative):
-            (self._x, self._y, self._w, self._h) = convertToAbsoluteValues(imgSize, (x, y, w, h))
-            self._width_img = imgSize[0]
-            self._height_img = imgSize[1]
             if format == BBFormat.XYWH:
-                self._x2 = self._w
-                self._y2 = self._h
+                (self._x, self._y, self._x2, self._y2) = convertToAbsoluteValues(imgSize, (x, y, w, h))
                 self._w = self._x2 - self._x
                 self._h = self._y2 - self._y
+                self._width_img = imgSize[0]
+                self._height_img = imgSize[1]
             else:
                 raise IOError(
                     'For relative coordinates, the format must be XYWH (x,y,width,height)')
