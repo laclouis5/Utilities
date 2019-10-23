@@ -47,7 +47,16 @@ class BBFormat(Enum):
     """
     XYWH = 1
     XYX2Y2 = 2
+    XYC = 3
 
+
+def convertToAbsCenterValues(xmin, ymin, xmax, ymax):
+    x = round((xmax + xmin) / 2.0)
+    y = round((ymax + ymin) / 2.0)
+    w = xmax - xmin
+    h = ymax - ymin
+
+    return (x, y, w, h)
 
 # size => (width, height) of the image
 # box => (X1, X2, Y1, Y2) of the bounding box
@@ -61,7 +70,7 @@ def convertToRelativeValues(size, box):
     x = cx * dw
     y = cy * dh
     w = w * dw
-    h = h * dh 
+    h = h * dh
     # x,y => (bounding_box_center)/width_of_the_image
     # w => bounding_box_width / width_of_the_image
     # h => bounding_box_height / height_of_the_image

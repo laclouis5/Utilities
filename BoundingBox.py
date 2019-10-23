@@ -89,6 +89,8 @@ class BoundingBox:
             return (self._x, self._y, self._w, self._h)
         elif format == BBFormat.XYX2Y2:
             return (self._x, self._y, self._x2, self._y2)
+        elif format == BBFormat.XYC:
+            return convertToAbsCenterValues(self._x, self._y, self._x2, self._y2)
 
     def getRelativeBoundingBox(self, imgSize=None):
         if imgSize is None and self._width_img is None and self._height_img is None:
