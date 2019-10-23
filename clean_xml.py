@@ -39,8 +39,8 @@ def xml_to_csv_2(boundingboxes, save_dir="", ratio=0.8, no_obj_dir=None):
 
 	train = []
 	val = []
-	i = 0
-	for name in names :
+
+	for (i, name) in enumerate(names) :
 		boxes = boundingboxes.getBoundingBoxesByImageName(name)
 
 		for box in boxes :
@@ -54,7 +54,6 @@ def xml_to_csv_2(boundingboxes, save_dir="", ratio=0.8, no_obj_dir=None):
 				train.append(line)
 			else :
 				val.append(line)
-		i += 1
 
 	if no_obj_dir != None:
 		no_obj_images = [os.path.join(no_obj_dir, item) for item in os.listdir(no_obj_dir) if os.path.splitext(item)[1] == '.jpg']
@@ -73,73 +72,6 @@ def xml_to_csv_2(boundingboxes, save_dir="", ratio=0.8, no_obj_dir=None):
 		f_train.writelines(train)
 	with open(os.path.join(save_dir, "val.csv"), "w") as f_val :
 		f_val.writelines(val)
-
-
-def xml_to_csv(folders, csv_path, csv_valid, names_to_labels, ratio=0.8):
-	'''
-	This function transcript VOC XML files to a CSV file for training (RetinaNet for instance).
-	!!! Use clean_xml_files func before !!!
-
-	FOLDERS - List of absolute paths to folders containing train or test images and XML files.
-
-	CSV_PATH - Absolute path including file name and extention to the CSV file to be generated.
-	For instance '/home/user_name/train.csv' will create file 'train.csv' in '/home/user_name/'.
-
-	NAMES_TO_LABELS - Dictionary with object name as key and label number as value.
-	'''
-	print('Transcripting XML to CSV...')
-
-	csv_temp = []
-
-	for folder in folders:
-		for file in sorted(os.listdir(folder)):
-			# Check if XML file
-			if(os.path.splitext(file)[1] == '.xml'):
-				csv_temp.append(os.path.join(folder, file))
-
-	shuffle(csv_temp)
-	nb_train_samples = int(len(csv_temp) * ratio)
-	train_xml = csv_temp[:nb_train_samples]
-	val_xml   = csv_temp[nb_train_samples:]
-
-	train_data = []
-	val_data   = []
-
-	for file in train_xml+val_xml:
-		# Retreive and process each 'object' in the etree
-		root = ET.parse(os.path.join(folder, file)).getroot()
-
-		for obj in root.findall('object'):
-			name = obj.find('name').text
-
-			# Save only train classes
-			if name not in names_to_labels.keys(): continue
-			coords = []
-
-			# Retreive bounding box coordinates
-			bounding_box = obj.find('bndbox')
-			[coords.append(int(coord.text)) for coord in bounding_box.getchildren()]
-
-			line = '{},{},{},{},{},{}\n'.format(
-				root.find('path').text,
-				coords[0],
-				coords[1],
-				coords[2],
-				coords[3],
-				name)
-
-			if file in train_xml:
-				train_data.append(line)
-			elif file in val_xml:
-				val_data.append(line)
-
-	with open(os.path.join(csv_path), 'w') as f_train:
-		f_train.writelines(train_data)
-
-	with open(os.path.join(csv_valid), 'w') as f_valid:
-		f_valid.writelines(val_data)
-
-	print('Done!')
 
 
 def create_VOC_database(database_path, folders, test_folders, names_to_labels, no_eval=False):
@@ -242,14 +174,12 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8):
 	if not os.path.isdir(val_dir):
 		os.mkdir(val_dir)
 
-	unique_ID = -1
-	names     = boundingBoxes.getNames()
+	names = boundingBoxes.getNames()
 	shuffle(names)
 
 	number_train = round(ratio*len(names))
 
 	for (i, name) in enumerate(names):
-		unique_ID += 1
 		yolo_rep   = []
 		img_path   = os.path.splitext(name)[0] + '.jpg'
 		if i < number_train:
@@ -258,7 +188,7 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8):
 			save_dir = val_dir
 
 		for box in boundingBoxes.getBoundingBoxesByImageName(name):
-			idenfier   = 'im_{}'.format(unique_ID)
+			idenfier   = 'im_{}'.format(i)
 			label      = names_to_labels[box.getClassId()]
 			x, y, w, h = box.getRelativeBoundingBox()
 
