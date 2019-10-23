@@ -285,13 +285,38 @@ def draw_bbox_images(folder, save_dir):
         img.save(os.path.join(save_dir, os.path.basename(image)))
 
 
+def draw_boxes_bboxes(image, bounding_boxes, save_dir, color=[255, 64, 0]):
+    '''
+    Takes as input one image (numpy array) and a BoundingBoxes object
+    representing the bounding boxes, draws them into and saves the image in
+    save_dir.
+    '''
+    image = image.copy()
+    for box in bounding_boxes.getBoundingBoxes():
+        add_bb_into_image(image, box, color=color, label=str(box.getClassId()))
+        img_name = os.path.basename(box.getImageName())
+        image_path = os.path.join(save_dir, img_name)
+
+    cv.imwrite(image_path, image)
+
+
+def add_bboxes_image(image, bboxes, color=[255, 64, 0]):
+    for box in bboxes.getBoundingBoxes():
+        add_bb_into_image(image, box, color=color, label=str(box.getClassId()))
+
+
+def create_dir(directory):
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
+
+
 def read_txt_annotation_file(file_path, img_size):
     '''
     Input are TXT file path and corresponding image size. Output are
     bounding boxes as a BoundingBox object.
     '''
     bounding_boxes = BoundingBoxes(bounding_boxes=[])
-    image_name = os.path.basename(os.path.splitext(file_path)[0] + '.jpg')
+    image_name = os.path.splitext(file_path)[0] + '.jpg'
 
     with open(file_path, 'r') as f:
         content = f.readlines()
@@ -338,3 +363,145 @@ def parse_yolo_dir(directory, disp_stats=False):
         val_boxes.stats()
 
     return train_boxes, val_boxes
+
+
+def xywh_to_xyx2y2(x, y, w, h):
+    '''
+    Takes as input absolute coords and returns integers.
+    '''
+    xmin = int(round(x - (w / 2)))
+    xmax = int(round(x + (w / 2)))
+    ymin = int(round(y - (h / 2)))
+    ymax = int(round(y + (h / 2)))
+    return xmin, ymin, xmax, ymax
+
+
+def get_stem_database(yolo_folder, save_dir="plant_stem_db/"):
+    # Global var
+    resolution = 832
+    create_dir(save_dir)
+    yolo_boxes = parse_yolo_folder(yolo_folder)
+    image_list = []
+
+    for image_name in yolo_boxes.getNames():
+        boxes = BoundingBoxes(bounding_boxes=[])
+
+        for box in yolo_boxes.getBoundingBoxesByImageName(image_name):
+            # If stem box
+            if box.getClassId() in [3, 4, 5]:
+                im_w, im_h = box.getImageSize()
+                (x, y, w, h) = box.getAbsoluteBoundingBox(format=BBFormat.XYC)
+                # Normalize size and convert to square
+                size = 0.075 * min(im_w, im_h)
+                x = round(x - size / 2.0)
+                y = round(y - size / 2.0)
+                box = BoundingBox(imageName=box.getImageName(), classId=box.getClassId(), x=x, y=y, w=size, h=size, imgSize=box.getImageSize())
+                boxes.addBoundingBox(box)
+                continue
+
+            # Else
+            im_w, im_h = box.getImageSize()
+            (x, y, w, h) = box.getAbsoluteBoundingBox(format=BBFormat.XYC)
+
+            # Convert to square and expand a little
+            l = max(w, h)
+            if l >= min(im_w, im_h):
+                l = min(im_w, im_h)
+
+            new_x = x
+            new_y = y
+            new_w = round(l + 0.075 * min(im_w, im_h))
+            new_h = round(l + 0.075 * min(im_w, im_h))
+
+            # Then clip shape to stay in original image
+            xmin, ymin, xmax, ymax = xywh_to_xyx2y2(new_x, new_y, new_w, new_h)
+            if xmin < 0:
+                new_x = x - xmin
+            if xmax >= im_w:
+                new_x = x - (xmax - im_w)
+            if ymin < 0:
+                new_y = y - ymin
+            if ymax >= im_h:
+                new_y = y - (ymax - im_h)
+
+            new_x = round(new_x - new_w / 2.0)
+            new_y = round(new_y - new_h / 2.0)
+
+            new_box = BoundingBox(imageName=image_name, classId=box.getClassId(), x=new_x, y=new_y, w=new_w, h=new_h, imgSize=box.getImageSize())
+            boxes.addBoundingBox(new_box)
+
+        # Retreive stems for each plant sub-image
+        plants = boxes.getBoundingBoxByClass(0)
+        plants += boxes.getBoundingBoxByClass(1)
+        plants += boxes.getBoundingBoxByClass(2)
+
+        stems = boxes.getBoundingBoxByClass(3)
+        stems += boxes.getBoundingBoxByClass(4)
+        stems += boxes.getBoundingBoxByClass(5)
+
+        for (i, box_plant) in enumerate(plants):
+            stem_boxes = BoundingBoxes(bounding_boxes=[])
+            (xmin, ymin, xmax, ymax) = box_plant.getAbsoluteBoundingBox(format=BBFormat.XYX2Y2)
+            (x_s, y_s, w_s, h_s) = box_plant.getAbsoluteBoundingBox(format=BBFormat.XYC)
+
+            for box_stem in stems:
+                (x, y, w, h) = box_stem.getAbsoluteBoundingBox(format=BBFormat.XYC)
+                (x_min, y_min, x_max, y_max) = box_stem.getAbsoluteBoundingBox(format=BBFormat.XYX2Y2)
+
+                # If stem box is not in plant box pass
+                if x + 0.7 * w / 2.0 >= xmax: continue
+                if x - 0.7 * w / 2.0 < xmin: continue
+                if y + 0.7 * h / 2.0 >= ymax: continue
+                if y - 0.7 * h / 2.0 < ymin: continue
+
+                # Change referencial
+                x_min = round((x_min - xmin) / w_s * resolution)
+                x_max = round((x_max - xmin) / w_s * resolution)
+                y_min = round((y_min - ymin) / h_s * resolution)
+                y_max = round((y_max - ymin) / h_s * resolution)
+
+                if x_min < 0 : x_min = 0
+                if x_max >= resolution : x_max = resolution - 1
+                if y_min < 0 : y_min = 0
+                if y_max >= resolution : y_max = resolution - 1
+
+                new_box = BoundingBox(imageName=box_stem.getImageName(), classId=box_stem.getClassId()-3, x=x_min, y=y_min, w=x_max, h=y_max, format=BBFormat.XYX2Y2, imgSize=(resolution, resolution))
+                stem_boxes.addBoundingBox(new_box)
+
+            # Create new reshaped image
+            image = cv.imread(box_plant.getImageName())
+            patch = cv.getRectSubPix(image, (w_s, h_s), (x_s, y_s))
+            patch = cv.resize(patch, (resolution, resolution))
+            file_name = os.path.splitext(os.path.basename(box_plant.getImageName()))[0]
+            file_name = "{}_{}.jpg".format(file_name, i)
+            file_name = os.path.join(save_dir, file_name)
+            # add_bboxes_image(patch, stem_boxes)
+            cv.imwrite(file_name, patch)
+
+            # New annotations
+            annot_name = os.path.splitext(file_name)[0] + ".txt"
+            annot = []
+            for stem in stem_boxes.getBoundingBoxes():
+                (x, y, w, h) = stem.getRelativeBoundingBox()
+                label = str(stem.getClassId())
+                line = "{} {} {} {} {}\n".format(label, x, y, w, h)
+                annot.append(line)
+
+            with open(annot_name, "w") as f:
+                f.writelines(annot)
+
+            # New train/val file
+            file_name = os.path.join("data/train/", os.path.basename(file_name))
+            image_list.append(file_name + '\n')
+
+
+        # Save train/val file
+        with open(os.path.join(save_dir, "train.txt"), "w") as f:
+            f.writelines(image_list)
+
+def main(args=None):
+    yolo_path = '/home/deepwater/yolo/train'
+    get_stem_database(yolo_path, "train/")
+
+if __name__ == "__main__":
+    main()
