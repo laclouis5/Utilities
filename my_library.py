@@ -323,7 +323,7 @@ def read_txt_annotation_file(file_path, img_size):
         content = [line.strip().split() for line in content]
 
     for det in content:
-        (label, x, y, w, h) = int(det[0]), float(det[1]), float(det[2]), float(det[3]), float(det[4])
+        (label, x, y, w, h) = det[0], float(det[1]), float(det[2]), float(det[3]), float(det[4])
         bounding_boxes.addBoundingBox(BoundingBox(imageName=image_name, classId=label, x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=img_size))
 
     return bounding_boxes
@@ -388,7 +388,8 @@ def get_stem_database(yolo_folder, save_dir="plant_stem_db/"):
 
         for box in yolo_boxes.getBoundingBoxesByImageName(image_name):
             # If stem box
-            if box.getClassId() in [3, 4, 5]:
+            # if box.getClassId() in [3, 4, 5]:
+            if "stem" in box.getClassId():
                 im_w, im_h = box.getImageSize()
                 (x, y, w, h) = box.getAbsoluteBoundingBox(format=BBFormat.XYC)
                 # Normalize size and convert to square
@@ -431,13 +432,13 @@ def get_stem_database(yolo_folder, save_dir="plant_stem_db/"):
             boxes.addBoundingBox(new_box)
 
         # Retreive stems for each plant sub-image
-        plants = boxes.getBoundingBoxByClass(0)
-        plants += boxes.getBoundingBoxByClass(1)
-        plants += boxes.getBoundingBoxByClass(2)
+        plants = boxes.getBoundingBoxByClass("maize")
+        plants += boxes.getBoundingBoxByClass("bean")
+        plants += boxes.getBoundingBoxByClass("leek")
 
-        stems = boxes.getBoundingBoxByClass(3)
-        stems += boxes.getBoundingBoxByClass(4)
-        stems += boxes.getBoundingBoxByClass(5)
+        stems = boxes.getBoundingBoxByClass("stem_maize")
+        stems += boxes.getBoundingBoxByClass("stem_bean")
+        stems += boxes.getBoundingBoxByClass("stem_leek")
 
         for (i, box_plant) in enumerate(plants):
             stem_boxes = BoundingBoxes(bounding_boxes=[])
@@ -491,17 +492,33 @@ def get_stem_database(yolo_folder, save_dir="plant_stem_db/"):
                 f.writelines(annot)
 
             # New train/val file
-            file_name = os.path.join("data/train/", os.path.basename(file_name))
+            file_name = os.path.join("data/val/", os.path.basename(file_name))
             image_list.append(file_name + '\n')
 
 
         # Save train/val file
-        with open(os.path.join(save_dir, "train.txt"), "w") as f:
+        with open(os.path.join(save_dir, "val.txt"), "w") as f:
             f.writelines(image_list)
 
+
+def normalize_stem_boxes(folder, save_dir):
+    map_labels = {
+        "0": "maize",
+        "1": "bean",
+        "2": "leek",
+        "3": "stem_maize",
+        "4": "stem_bean",
+        "5": "stem_leek"
+    }
+    bounding_boxes = parse_yolo_folder(folder)
+    bounding_boxes.mapLabels(map_labels)
+    new_boxes = bounding_boxes.squareStemBoxes()
+    new_boxes.save(save_dir=save_dir, type_coordinates=CoordinatesType.Absolute, format=BBFormat.XYX2Y2)
+
+
 def main(args=None):
-    yolo_path = '/home/deepwater/yolo/train'
-    get_stem_database(yolo_path, "train/")
+    yolo_path = '/home/deepwater/github/darknet/data/database_5.0/val'
+    normalize_stem_boxes(yolo_path, "save/test-save-bboxes/")
 
 if __name__ == "__main__":
     main()
