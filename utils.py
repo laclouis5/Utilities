@@ -51,8 +51,8 @@ class BBFormat(Enum):
 
 
 def convertToAbsCenterValues(xmin, ymin, xmax, ymax):
-    x = round((xmax + xmin) / 2.0)
-    y = round((ymax + ymin) / 2.0)
+    x = (xmax + xmin) / 2.0
+    y = (ymax + ymin) / 2.0
     w = xmax - xmin
     h = ymax - ymin
 
@@ -82,10 +82,10 @@ def convertToRelativeValues(size, box):
 def convertToAbsoluteValues(size, box):
     # w_box = round(size[0] * box[2])
     # h_box = round(size[1] * box[3])
-    xIn = round(((2 * float(box[0]) - float(box[2])) * size[0] / 2))
-    yIn = round(((2 * float(box[1]) - float(box[3])) * size[1] / 2))
-    xEnd = xIn + round(float(box[2]) * size[0])
-    yEnd = yIn + round(float(box[3]) * size[1])
+    xIn = (2 * float(box[0]) - float(box[2])) * size[0] / 2
+    yIn = (2 * float(box[1]) - float(box[3])) * size[1] / 2
+    xEnd = xIn + float(box[2]) * size[0]
+    yEnd = yIn + float(box[3]) * size[1]
     if xIn < 0:
         xIn = 0
     if yIn < 0:
