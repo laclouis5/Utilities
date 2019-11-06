@@ -426,7 +426,7 @@ def main(args=None):
 	clean_xml_files(folders)
 	boundingBoxes = parse_xml(folders, classes)
 	boundingBoxes.stats()
-	xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
+	# xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
 	# add_no_obj_images(yolo_path, no_obj_dir)
 

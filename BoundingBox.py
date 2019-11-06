@@ -1,4 +1,5 @@
 from utils import *
+import os
 
 class BoundingBox:
     def __init__(self,
@@ -127,14 +128,6 @@ class BoundingBox:
     def getArea(self):
         area = (self._w + 1) * (self._h + 1)
         return area
-
-
-    def repr(self):
-        if self._bbType is BBType.GroundTruth:
-            repr += "{} {} {} {} {}\n".format(self._classId, self._x, self._y, self._w, self._h)
-        elif self._bbType is BBType.Detected:
-            repr += "{} {} {} {} {} {}\n".format(self._classId, self._classConfidence, self._x, self._y, self._w, self._h)
-
 
     @staticmethod
     def compare(det1, det2):

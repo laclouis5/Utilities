@@ -84,16 +84,6 @@ class BoundingBoxes:
     def __len__(self):
         return len(self._boundingBoxes)
 
-    def repr(self):
-        repr = ""
-        for d in self._boundingBoxes:
-            box = d.getRelativeBoundingBox()
-            if d.getBBType() is BBType.GroundTruth:
-                repr += "{} {} {} {} {}\n".format(d.getClassId(), box[0], box[1], box[2], box[3])
-            elif d.getBBType() is BBType.Detected:
-                    repr += "{} {} {} {} {} {}\n".format(d.getClassId(), d.getConfidence(), box[0], box[1], box[2], box[3])
-        return repr
-
     def count(self, bbType=None):
         if bbType is None:  # Return all bounding boxes
             return len(self._boundingBoxes)
@@ -119,11 +109,53 @@ class BoundingBoxes:
                 (x, y, _, _) = box.getRelativeBoundingBox()
                 w = 0.05
                 h = 0.05
-                box = BoundingBox(imageName=box.getImageName(), classId=box.getClassId(), x=x, y=y, w=w, h=w, typeCoordinates=CoordinatesType.Relative, imgSize=box.getImageSize(), bbType=box.getBBType(), classConfidence=box.getConfidence(), format=BBFormat.XYWH)
+                box = BoundingBox(imageName=box.getImageName(), classId=box.getClassId(), x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=box.getImageSize(), bbType=box.getBBType(), classConfidence=box.getConfidence(), format=BBFormat.XYWH)
                 boxes.append(box)
             else:
                 boxes.append(box)
         return BoundingBoxes(bounding_boxes=boxes)
+
+    def squareStemBoxes(self, ratio=0.075):
+        boxes = []
+        print("In squareStem")
+        for box in self.getBoundingBoxes():
+            if "stem" not in box.getClassId():
+                boxes.append(box)
+            else:
+                (x, y, _, _) = box.getRelativeBoundingBox()
+                (img_w, img_h) = box.getImageSize()
+                new_size = ratio * min(img_w, img_h)
+                w = new_size / img_w
+                h = new_size / img_h
+                boxes.append(BoundingBox(imageName=box.getImageName(), classId=box.getClassId(), x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=box.getImageSize(), bbType=box.getBBType(), classConfidence=box.getConfidence, format=BBFormat.XYWH))
+        return BoundingBoxes(bounding_boxes=boxes)
+
+
+    def save(self, type_coordinates=CoordinatesType.Relative, format=BBFormat.XYWH, save_dir=None):
+        for imageName in self.getNames():
+            description = ""
+            for box in self.getBoundingBoxesByImageName(imageName):
+                bbox = (0, 0, 0, 0)
+                if type_coordinates == CoordinatesType.Relative:
+                    bbox = box.getRelativeBoundingBox()
+                else:
+                    bbox = box.getAbsoluteBoundingBox(format)
+                    bbox = (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
+
+                if box.getBBType() == BBType.Detected:
+                    description += "{} {} {} {} {} {}\n".format(box.getClassId(), box.getConfidence(), bbox[0], bbox[1], bbox[2], bbox[3])
+                else:
+                    description += "{} {} {} {} {}\n".format(box.getClassId(), bbox[0], bbox[1], bbox[2], bbox[3])
+
+            fileName = os.path.splitext(imageName)[0] + ".txt"
+            if save_dir is not None:
+                if not os.path.isdir(save_dir):
+                    os.mkdir(save_dir)
+                fileName = os.path.join(save_dir, os.path.basename(fileName))
+
+            with open(fileName, "w") as f:
+                f.write(description)
+
 
     def meanSize(self):
         import matplotlib.pyplot as plt
