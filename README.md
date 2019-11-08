@@ -27,7 +27,7 @@ The bounding box has also a label (`string`) and an optional `confidence` (`floa
 If openCV is defined a method to add the rectangular box in an image is provided.
 
 ## BoundingBoxes
-This object is a sub-class of `MutableSequence` and can be used like a standard array of `BoundingBox` objects. Filtering methods are provided to retreive specific data. A save function allows you to build a Yolo database. Methods to draw annotations on images are also present.
+This object is a sub-class of `MutableSequence` and can be used like a standard array of `BoundingBox` objects. Filtering methods are provided to retreive specific data. A save function allows you to build a Yolo database. Methods to draw annotations on images are also present (joblib may be required for parallel computations).
 
 ## Evaluator
 Evaluate a `BoundingBox` object that contains ground truths and assotiated detections with mAP and Coco AP. This class can draw precision-recall curves.
