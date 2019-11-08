@@ -1,5 +1,4 @@
 from utils import *
-import os
 
 class BoundingBox:
     def __init__(self,
@@ -141,6 +140,10 @@ class BoundingBox:
     def getArea(self):
         area = (self._w + 1) * (self._h + 1)
         return area
+
+    def mapLabel(self, mapping):
+        mapping = {str(key): value for (key, value) in mapping.items()}
+        self._classId = mapping[str(self._classId)]
 
     def description(self, type_coordinates=None, format=None):
         if type_coordinates is None:

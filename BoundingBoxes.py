@@ -1,9 +1,7 @@
 from BoundingBox import *
 from utils import *
 from random import shuffle
-import numpy as np
 import matplotlib.pyplot as plt
-
 from collections.abc import MutableSequence
 
 
@@ -44,9 +42,9 @@ class BoundingBoxes(MutableSequence):
     def getBoundingBoxByClass(self, classId):
         return BoundingBoxes([bb for bb in self if bb.getClassId() == classId])
 
-    def mapLabels(self, dic):
-        for bbox in self:
-            bbox._classId = dic[bbox.getClassId()]
+    def mapLabels(self, mapping):
+        for box in self:
+            box.mapLabel(mapping)
 
     def shuffleBoundingBoxes(self):
         shuffle(self._boundingBoxes)
@@ -81,8 +79,7 @@ class BoundingBoxes(MutableSequence):
 
             fileName = os.path.splitext(imageName)[0] + ".txt"
             if save_dir is not None:
-                if not os.path.isdir(save_dir):
-                    os.mkdir(save_dir)
+                create_dir(save_dir)
                 fileName = os.path.join(save_dir, os.path.basename(fileName))
 
             with open(fileName, "w") as f:
@@ -134,13 +131,11 @@ class BoundingBoxes(MutableSequence):
         import cv2 as cv
 
         if save_dir is not None:
-            if not os.path.isdir(save_dir):
-                os.mkdir(save_dir)
+            create_dir(save_dir)
+            save_name = os.path.join(save_dir, os.path.basename(name))
 
         image = cv.imread(name)
-        self.drawCVImage(image, name)
-        if save_dir is not None:
-            name = os.path.join(save_dir, os.path.basename(name))
+        self.drawCVImage(image, save_name)
         cv.imwrite(name, image)
 
     def drawAll(self, save_dir="annotated_images/"):

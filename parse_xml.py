@@ -12,6 +12,8 @@ from Evaluator import *
 from utils import *
 
 def parse_xml(directories, classes=None):
+    # break this function into small parts for reading a single XML file and
+    # a single directory, parallelize the main loop.
     """
     Parses a list of directories with XML GT files labeled with labelImg
     and returns a boundingBoxes object holding boxes. Classes can be filtered.
@@ -23,7 +25,7 @@ def parse_xml(directories, classes=None):
 
     allBoundingBoxes = BoundingBoxes()
 
-    # Can be parallelized
+    # Can be parallelized, break into a small function
     for file in xml_files:
         tree = ET.parse(file).getroot()
 

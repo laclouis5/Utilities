@@ -323,8 +323,7 @@ def read_txt_annotation_file(file_path, img_size):
         content = [line.strip().split() for line in content]
 
     for det in content:
-        (label, x, y, w, h) = det[0], float(det[1]), float(det[2]), float(det[3]), float(det[4])
-        bounding_boxes.append(BoundingBox(imageName=image_name, classId=label, x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=img_size))
+        (label, x, y, w, h) = det[0], float(det[1]), float(det[2]), float(det[3]), float(det[4]), bounding_boxes.append(BoundingBox(imageName=image_name, classId=label, x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=img_size))
 
     return bounding_boxes
 

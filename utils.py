@@ -1,5 +1,5 @@
 from enum import Enum
-import cv2
+import os
 
 class MethodAveragePrecision(Enum):
     """
@@ -9,8 +9,8 @@ class MethodAveragePrecision(Enum):
         Developed by: Rafael Padilla
         Last modification: Apr 28 2018
     """
-    EveryPointInterpolation = 1
-    ElevenPointInterpolation = 2
+    EveryPointInterpolation = 0
+    ElevenPointInterpolation = 1
 
 
 class CoordinatesType(Enum):
@@ -21,8 +21,8 @@ class CoordinatesType(Enum):
         Developed by: Rafael Padilla
         Last modification: Apr 28 2018
     """
-    Relative = 1
-    Absolute = 2
+    Relative = 0
+    Absolute = 1
 
 
 class BBType(Enum):
@@ -32,8 +32,8 @@ class BBType(Enum):
         Developed by: Rafael Padilla
         Last modification: May 24 2018
     """
-    GroundTruth = 1
-    Detected = 2
+    GroundTruth = 0
+    Detected = 1
 
 
 class BBFormat(Enum):
@@ -45,9 +45,9 @@ class BBFormat(Enum):
         Developed by: Rafael Padilla
         Last modification: May 24 2018
     """
-    XYWH = 1
-    XYX2Y2 = 2
-    XYC = 3
+    XYWH = 0
+    XYX2Y2 = 1
+    XYC = 2
 
 def convertToAbsCenterValues(xmin, ymin, xmax, ymax):
     x = (xmax + xmin) / 2.0
@@ -96,77 +96,13 @@ def convertToAbsoluteValues(size, box):
     # (xMin, yMin, Xmax, yMax)
     return (xIn, yIn, xEnd, yEnd)
 
-def getBoundingBoxes(directory,
-                     isGT,
-                     bbFormat,
-                     coordType,
-                     allBoundingBoxes=None,
-                     allClasses=None,
-                     imgSize=(0, 0)):
-    """Read txt files containing bounding boxes (ground truth and detections)."""
-    if allBoundingBoxes is None:
-        allBoundingBoxes = BoundingBoxes()
-    if allClasses is None:
-        allClasses = []
-    # Read ground truths
-    os.chdir(directory)
-    files = glob.glob("*.txt")
-    files.sort()
-    # Read GT detections from txt file
-    # Each line of the files in the groundtruths folder represents a ground truth bounding box
-    # (bounding boxes that a detector should detect)
-    # Each value of each line is  "class_id, x, y, width, height" respectively
-    # Class_id represents the class of the bounding box
-    # x, y represents the most top-left coordinates of the bounding box
-    # x2, y2 represents the most bottom-right coordinates of the bounding box
-    for f in files:
-        nameOfImage = f.replace(".txt", "")
-        fh1 = open(f, "r")
-        for line in fh1:
-            line = line.replace("\n", "")
-            if line.replace(' ', '') == '':
-                continue
-            splitLine = line.split(" ")
-            if isGT:
-                # idClass = int(splitLine[0]) #class
-                idClass = (splitLine[0])  # class
-                x = float(splitLine[1])
-                y = float(splitLine[2])
-                w = float(splitLine[3])
-                h = float(splitLine[4])
-                bb = BoundingBox(
-                    nameOfImage,
-                    idClass,
-                    x,
-                    y,
-                    w,
-                    h,
-                    coordType,
-                    imgSize,
-                    BBType.GroundTruth,
-                    format=bbFormat)
-            else:
-                # idClass = int(splitLine[0]) #class
-                idClass = (splitLine[0])  # class
-                confidence = float(splitLine[1])
-                x = float(splitLine[2])
-                y = float(splitLine[3])
-                w = float(splitLine[4])
-                h = float(splitLine[5])
-                bb = BoundingBox(
-                    nameOfImage,
-                    idClass,
-                    x,
-                    y,
-                    w,
-                    h,
-                    coordType,
-                    imgSize,
-                    BBType.Detected,
-                    confidence,
-                    format=bbFormat)
-            allBoundingBoxes.append(bb)
-            if idClass not in allClasses:
-                allClasses.append(idClass)
-        fh1.close()
-    return allBoundingBoxes, allClasses
+
+def files_with_extension(folder, extension):
+    return [os.path.join(folder, item)
+            for item in os.listdir(folder)
+            if os.path.splitext(item)[1] == extension]
+
+
+def create_dir(directory):
+    if not os.path.isdir(directory):
+        os.mkdir(directory)

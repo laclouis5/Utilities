@@ -10,6 +10,7 @@ from parse_xml import parse_xml
 from utils import *
 from BoundingBoxes import BoundingBoxes
 from BoundingBox import BoundingBox
+import Parser
 from glob import glob, iglob
 from Evaluator import *
 from skimage import io
@@ -417,15 +418,18 @@ def main(args=None):
 
 	classes         = ['mais','haricot', 'poireau', 'mais_tige', 'haricot_tige', 'poireau_tige']
 	names_to_labels = {'mais': 0,'haricot': 1, 'poireau': 2, 'mais_tige': 3, 'haricot_tige': 4, 'poireau_tige': 5}
-
-	# classes         = ['poireau_tige']
-	# names_to_labels = {'poireau_tige': 0}
+	labels_to_names = {0: "maize", 1: "bean", 2: "leek", 3: "stem_maize", 4: "stem_bean", 5: "stem_leek"}
 
 	yolo_path = '/home/deepwater/yolo/'
 
 	clean_xml_files(folders)
-	boundingBoxes = parse_xml(folders, classes)
+	boundingBoxes = Parser.parse_xml_directories(folders, classes)
 	boundingBoxes.stats()
+
+	boundingBoxes = Parser.parse_yolo_folder("/home/deepwater/yolo/train/")
+	boundingBoxes.mapLabels(labels_to_names)
+	boundingBoxes.stats()
+
 	# xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
 	# add_no_obj_images(yolo_path, no_obj_dir)
