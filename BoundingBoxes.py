@@ -4,72 +4,108 @@ from random import shuffle
 import numpy as np
 import matplotlib.pyplot as plt
 
-class BoundingBoxes:
-    def __init__(self, bounding_boxes=[]):
-        self._boundingBoxes = bounding_boxes
+from collections.abc import MutableSequence
 
-    def addBoundingBox(self, bb):
-        if isinstance(bb, list):
-            self._boundingBoxes.extend(bb)
+
+class BoundingBoxes(MutableSequence):
+    def __init__(self, bounding_boxes=None):
+        if bounding_boxes is not None:
+            self._boundingBoxes = bounding_boxes
         else:
-            self._boundingBoxes.append(bb)
+            self._boundingBoxes = []
 
-    def removeBoundingBox(self, _boundingBox):
-        for d in self._boundingBoxes:
-            if d == _boundingBox:
-                del self._boundingBoxes[d]
-                return
+    def __len__(self):
+        return len(self._boundingBoxes)
 
-    def removeAllBoundingBoxes(self):
-        self._boundingBoxes = []
+    def __getitem__(self, index):
+        return self._boundingBoxes[index]
 
-    def getBoundingBoxes(self):
-        return self._boundingBoxes
+    def __setitem__(self, box):
+        self._boundingBoxes.append(box)
+
+    def __delitem__(self, box):
+        self._boundingBoxes.remove(box)
+
+    def insert(self, index, box):
+        self._boundingBoxes.insert(index, box)
+
+    def getClasses(self):
+        return sorted(set([box.getClassId() for box in self]))
+
+    def getNames(self):
+        return sorted(set([box.getImageName() for box in self]))
+
+    def getBoundingBoxesByType(self, bbType):
+        return BoundingBoxes([d for d in self if d.getBBType() == bbType])
+
+    def getBoundingBoxesByImageName(self, imageName):
+        return BoundingBoxes([d for d in self if d.getImageName() == imageName])
 
     def getBoundingBoxByClass(self, classId):
-        boundingBoxes = []
-        for d in self._boundingBoxes:
-            if d.getClassId() == classId:  # get only specified bounding box type
-                boundingBoxes.append(d)
-        return boundingBoxes
+        return BoundingBoxes([bb for bb in self if bb.getClassId() == classId])
 
     def mapLabels(self, dic):
-        for bbox in self._boundingBoxes:
+        for bbox in self:
             bbox._classId = dic[bbox.getClassId()]
 
     def shuffleBoundingBoxes(self):
         shuffle(self._boundingBoxes)
 
-    def getClasses(self):
-        classes = []
-        for d in self._boundingBoxes:
-            c = d.getClassId()
-            if c not in classes:
-                classes.append(c)
-        return sorted(classes)
+    def count(self, bbType=None):
+        if bbType is None:  # Return all bounding boxes
+            return len(self)
+        count = 0
+        for d in self:
+            if d.getBBType() == bbType:  # get only specified bb type
+                count += 1
+        return count
 
-    def getNames(self):
-        names = []
-        for bbox in self._boundingBoxes:
-            name = bbox.getImageName()
-            if name not in names:
-                names.append(name)
-        return sorted(names)
+    def stats(self):
+        print("{:<20} {:<15} {}".format(
+            "Label:", "Nb Images:", "Nb Annotations:"))
+        for label in self.getClasses():
+            boxes = self.getBoundingBoxByClass(label)
+            nb_images = len(set([item.getImageName() for item in boxes]))
+            nb_annot = len(boxes)
 
-    def getBoundingBoxesByType(self, bbType):
-        # get only specified bb type
-        return [d for d in self._boundingBoxes if d.getBBType() == bbType]
+            print("{:<20} {:<15} {}".format(label, nb_images, nb_annot))
 
-    def getBoundingBoxesByImageName(self, imageName):
-        # get only specified bb type
-        return [d for d in self._boundingBoxes if d.getImageName() == imageName]
+    def save(self, type_coordinates=CoordinatesType.Relative, format=BBFormat.XYWH, save_dir=None):
+        """
+        Save all bounding boxes as Yolo annotation files in the specified directory.
+        """
+        for imageName in self.getNames():
+            description = ""
+            for box in self.getBoundingBoxesByImageName(imageName):
+                description += box.description(type_coordinates, format)
+
+            fileName = os.path.splitext(imageName)[0] + ".txt"
+            if save_dir is not None:
+                if not os.path.isdir(save_dir):
+                    os.mkdir(save_dir)
+                fileName = os.path.join(save_dir, os.path.basename(fileName))
+
+            with open(fileName, "w") as f:
+                f.write(description)
+
+    def squareStemBoxes(self, ratio=0.075):
+        boxes = BoundingBoxes()
+        for box in self:
+            if "stem" not in box.getClassId():
+                boxes.append(box)
+            else:
+                (x, y, _, _) = box.getRelativeBoundingBox()
+                (img_w, img_h) = box.getImageSize()
+                new_size = ratio * min(img_w, img_h)
+                w = new_size / img_w
+                h = new_size / img_h
+                boxes.append(BoundingBox(imageName=box.getImageName(), classId=box.getClassId(), x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=box.getImageSize(), bbType=box.getBBType(), classConfidence=box.getConfidence, format=BBFormat.XYWH))
+        return boxes
 
     def plotHistogram(self):
-        areas   = []
-        classes = sorted(self.getClasses())
-        labels  = ['{}'.format(c) for c in classes]
-        for c in classes:
-            boxes = self.getBoundingBoxByClass(c)
+        areas = []
+        for label in self.getClasses():
+            boxes = self.getBoundingBoxByClass(label)
             areas.append([bbox.getArea() for bbox in boxes])
         # plt.hist(areas, bins=200, stacked=True, density=True, label=labels)
         # plt.hist([bbox.getArea() for bbox in boxes], bins=100)
@@ -81,118 +117,47 @@ class BoundingBoxes:
         # plt.ylabel('Number of bbox')
         plt.show()
 
-    def __len__(self):
-        return len(self._boundingBoxes)
+    def drawCVImage(self, image, imageName):
+        """
+        draws boxes for imageName on the CV image and returns it.
+        """
+        boxes = self.getBoundingBoxesByImageName(imageName)
+        for box in boxes:
+            box.addIntoImage(image)
+        return image
 
-    def count(self, bbType=None):
-        if bbType is None:  # Return all bounding boxes
-            return len(self._boundingBoxes)
-        count = 0
-        for d in self._boundingBoxes:
-            if d.getBBType() == bbType:  # get only specified bb type
-                count += 1
-        return count
+    def drawImage(self, name, save_dir=None):
+        """
+        draws boxes for 'name' on its corresponding image name specified
+        in box.imageName and saves it in save_dir if given.
+        """
+        import cv2 as cv
 
-    def stats(self):
-        print("{:<20} {:<15} {}".format("Label:", "Nb Images:", "Nb Annotations:"))
-        for label in self.getClasses():
-            boxes = self.getBoundingBoxByClass(label)
-            nb_images = len(set([item.getImageName() for item in boxes]))
-            nb_annot  = len(boxes)
+        if save_dir is not None:
+            if not os.path.isdir(save_dir):
+                os.mkdir(save_dir)
 
-            print("{:<20} {:<15} {}".format(label, nb_images, nb_annot))
+        image = cv.imread(name)
+        self.drawCVImage(image, name)
+        if save_dir is not None:
+            name = os.path.join(save_dir, os.path.basename(name))
+        cv.imwrite(name, image)
 
-    def normalizedSquareBoxes(self):
-        boxes = []
-        for box in self.getBoundingBoxes():
-            if "tige" in box.getClassId():
-                (x, y, _, _) = box.getRelativeBoundingBox()
-                w = 0.05
-                h = 0.05
-                box = BoundingBox(imageName=box.getImageName(), classId=box.getClassId(), x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=box.getImageSize(), bbType=box.getBBType(), classConfidence=box.getConfidence(), format=BBFormat.XYWH)
-                boxes.append(box)
-            else:
-                boxes.append(box)
-        return BoundingBoxes(bounding_boxes=boxes)
+    def drawAll(self, save_dir="annotated_images/"):
+        """
+        draws all boxes on their correponding image stored in box.imageName and
+        saves images in save_dir.
+        """
+        from joblib import Parallel, delayed
 
-    def squareStemBoxes(self, ratio=0.075):
-        boxes = []
-        print("In squareStem")
-        for box in self.getBoundingBoxes():
-            if "stem" not in box.getClassId():
-                boxes.append(box)
-            else:
-                (x, y, _, _) = box.getRelativeBoundingBox()
-                (img_w, img_h) = box.getImageSize()
-                new_size = ratio * min(img_w, img_h)
-                w = new_size / img_w
-                h = new_size / img_h
-                boxes.append(BoundingBox(imageName=box.getImageName(), classId=box.getClassId(), x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=box.getImageSize(), bbType=box.getBBType(), classConfidence=box.getConfidence, format=BBFormat.XYWH))
-        return BoundingBoxes(bounding_boxes=boxes)
+        names = self.getNames()
+        save_dir = [save_dir for _ in range(len(names))]
 
-
-    def save(self, type_coordinates=CoordinatesType.Relative, format=BBFormat.XYWH, save_dir=None):
-        for imageName in self.getNames():
-            description = ""
-            for box in self.getBoundingBoxesByImageName(imageName):
-                bbox = (0, 0, 0, 0)
-                if type_coordinates == CoordinatesType.Relative:
-                    bbox = box.getRelativeBoundingBox()
-                else:
-                    bbox = box.getAbsoluteBoundingBox(format)
-                    bbox = (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
-
-                if box.getBBType() == BBType.Detected:
-                    description += "{} {} {} {} {} {}\n".format(box.getClassId(), box.getConfidence(), bbox[0], bbox[1], bbox[2], bbox[3])
-                else:
-                    description += "{} {} {} {} {}\n".format(box.getClassId(), bbox[0], bbox[1], bbox[2], bbox[3])
-
-            fileName = os.path.splitext(imageName)[0] + ".txt"
-            if save_dir is not None:
-                if not os.path.isdir(save_dir):
-                    os.mkdir(save_dir)
-                fileName = os.path.join(save_dir, os.path.basename(fileName))
-
-            with open(fileName, "w") as f:
-                f.write(description)
-
-
-    def meanSize(self):
-        import matplotlib.pyplot as plt
-        boundingBoxes = self.normalizedSquareBoxes()
-        for label in boundingBoxes.getClasses():
-            boxes = boundingBoxes.getBoundingBoxByClass(label)
-            widths = []
-            heights = []
-            for box in boxes:
-                bbox = box.getAbsoluteBoundingBox()
-                widths.append(bbox[2])
-                heights.append(bbox[3])
-            plt.scatter(widths, heights)
-            plt.title(label)
-            plt.xlim((0, 1000))
-            plt.ylim((0, 1000))
-            plt.show()
+        Parallel(n_jobs=-1, backend="multiprocessing")(delayed(self.drawImage)(name, sd) for (name, sd) in zip(names, save_dir))
 
     def clone(self):
         newBoundingBoxes = BoundingBoxes()
-        for d in self._boundingBoxes:
+        for d in self:
             det = BoundingBox.clone(d)
-            newBoundingBoxes.addBoundingBox(det)
+            newBoundingBoxes.add(det)
         return newBoundingBoxes
-
-    def drawAllBoundingBoxes(self, image, imageName):
-        bbxes = self.getBoundingBoxesByImageName(imageName)
-        for bb in bbxes:
-            if bb.getBBType() == BBType.GroundTruth:  # if ground truth
-                image = add_bb_into_image(image, bb, color=(0, 255, 0))  # green
-            else:  # if detection
-                image = add_bb_into_image(image, bb, color=(255, 0, 0))  # red
-        return image
-
-    # def drawAllBoundingBoxes(self, image):
-    #     for gt in self.getBoundingBoxesByType(BBType.GroundTruth):
-    #         image = add_bb_into_image(image, gt ,color=(0,255,0))
-    #     for det in self.getBoundingBoxesByType(BBType.Detected):
-    #         image = add_bb_into_image(image, det ,color=(255,0,0))
-    #     return image

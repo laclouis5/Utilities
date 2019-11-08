@@ -66,24 +66,35 @@ class BoundingBox:
                     'For relative coordinates, the format must be XYWH (x,y,width,height)')
         # For absolute coords: (x,y,w,h)=real bb coords
         else:
-            self._x = x
-            self._y = y
             if format == BBFormat.XYWH:
+                self._x = x
+                self._y = y
                 self._w = w
                 self._h = h
                 self._x2 = self._x + self._w
                 self._y2 = self._y + self._h
-            else:  # format == BBFormat.XYX2Y2: <left> <top> <right> <bottom>.
+            elif format == BBFormat.XYX2Y2:  # format == BBFormat.XYX2Y2: <left> <top> <right> <bottom>.
+                self._x = x
+                self._y = y
                 self._x2 = w
                 self._y2 = h
                 self._w = self._x2 - self._x
                 self._h = self._y2 - self._y
+            else:
+                self._w = w
+                self._h = h
+                self._x = x - self._w / 2.0
+                self._y = y - self._h / 2.0
+                self._x2 = x + self._w / 2.0
+                self._y2 = y + self._h / 2.0
+
         if imgSize is None:
             self._width_img = None
             self._height_img = None
         else:
             self._width_img = imgSize[0]
             self._height_img = imgSize[1]
+
 
     def getAbsoluteBoundingBox(self, format=BBFormat.XYWH):
         if format == BBFormat.XYWH:
@@ -92,6 +103,7 @@ class BoundingBox:
             return (self._x, self._y, self._x2, self._y2)
         elif format == BBFormat.XYC:
             return convertToAbsCenterValues(self._x, self._y, self._x2, self._y2)
+
 
     def getRelativeBoundingBox(self, imgSize=None):
         if imgSize is None and self._width_img is None and self._height_img is None:
@@ -103,6 +115,7 @@ class BoundingBox:
         else:
             return convertToRelativeValues((self._width_img, self._height_img),
                                            (self._x, self._x2, self._y, self._y2))
+
 
     def getImageName(self):
         return self._imageName
@@ -129,6 +142,62 @@ class BoundingBox:
         area = (self._w + 1) * (self._h + 1)
         return area
 
+    def description(self, type_coordinates=None, format=None):
+        if type_coordinates is None:
+            type_coordinates = self._typeCoordinates
+        if format is None:
+            format = self._format
+
+        if type_coordinates == CoordinatesType.Relative:
+            bbox = self.getRelativeBoundingBox()
+        else:
+            bbox = self.getAbsoluteBoundingBox(format)
+            bbox = (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
+
+        if self._bbType == BBType.Detected:
+            return "{} {} {} {} {} {}\n".format(self._classId, self._classConfidence, bbox[0], bbox[1], bbox[2], bbox[3])
+        else:
+            return "{} {} {} {} {}\n".format(self._classId, bbox[0], bbox[1], bbox[2], bbox[3])
+
+
+    def addIntoImage(self, image, color=None, thickness=2):
+        # Choose color if not specified
+        if color is None:
+            if self._bbType == BBType.GroundTruth:
+                color = (127, 255, 127)
+            else:
+                color = (255, 100, 100)
+
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        fontScale = 0.5
+        fontThickness = 1
+
+        x1, y1, x2, y2 = self.getAbsoluteBoundingBox(BBFormat.XYX2Y2)
+        x1 = int(x1)
+        y1 = int(y1)
+        x2 = int(x2)
+        y2 = int(y2)
+        cv2.rectangle(image, (x1, y1), (x2, y2), color, thickness)
+
+        # Add label
+        label = self._classId
+        # Get size of the text box
+        (tw, th) = cv2.getTextSize(label, font, fontScale, fontThickness)[0]
+        # Top-left coord of the textbox
+        (xin_bb, yin_bb) = (x1 + thickness, y1 - th + int(12.5 * fontScale))
+        # Checking position of the text top-left (outside or inside the bb)
+        if yin_bb - th <= 0:  # if outside the image
+            yin_bb = y1 + th  # put it inside the bb
+        r_Xin = x1 - int(thickness / 2)
+        r_Yin = y1 - th - int(thickness / 2)
+        # Draw filled rectangle to put the text in it
+        cv2.rectangle(image, (r_Xin, r_Yin - thickness),
+                      (r_Xin + tw + thickness * 3, r_Yin + th + int(12.5 * fontScale)), color,
+                      -1)
+        cv2.putText(image, label, (xin_bb, yin_bb), font, fontScale, (0, 0, 0), fontThickness,
+                    cv2.LINE_AA)
+        return image
+
     @staticmethod
     def compare(det1, det2):
         det1BB = det1.getAbsoluteBoundingBox()
@@ -152,7 +221,6 @@ class BoundingBox:
     @staticmethod
     def clone(boundingBox):
         absBB = boundingBox.getAbsoluteBoundingBox(format=BBFormat.XYWH)
-        # return (self._x,self._y,self._x2,self._y2)
         newBoundingBox = BoundingBox(
             boundingBox.getImageName(),
             boundingBox.getClassId(),

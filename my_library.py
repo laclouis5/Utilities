@@ -32,7 +32,7 @@ def scatter3d(image, egi_mask):
     x_rand = np.random.randint(0, 2448, 4000)
     y_rand = np.random.randint(0, 2048, 4000)
 
-    list   = []
+    list = []
     colors = []
     for x, y in zip(x_rand, y_rand):
         list.append(image[y, x, :])
@@ -292,7 +292,7 @@ def draw_boxes_bboxes(image, bounding_boxes, save_dir, color=[255, 64, 0]):
     save_dir.
     '''
     image = image.copy()
-    for box in bounding_boxes.getBoundingBoxes():
+    for box in bounding_boxes:
         add_bb_into_image(image, box, color=color, label=str(box.getClassId()))
         img_name = os.path.basename(box.getImageName())
         image_path = os.path.join(save_dir, img_name)
@@ -301,7 +301,7 @@ def draw_boxes_bboxes(image, bounding_boxes, save_dir, color=[255, 64, 0]):
 
 
 def add_bboxes_image(image, bboxes, color=[255, 64, 0]):
-    for box in bboxes.getBoundingBoxes():
+    for box in bboxes:
         add_bb_into_image(image, box, color=color, label=str(box.getClassId()))
 
 
@@ -315,7 +315,7 @@ def read_txt_annotation_file(file_path, img_size):
     Input are TXT file path and corresponding image size. Output are
     bounding boxes as a BoundingBox object.
     '''
-    bounding_boxes = BoundingBoxes(bounding_boxes=[])
+    bounding_boxes = BoundingBoxes()
     image_name = os.path.splitext(file_path)[0] + '.jpg'
 
     with open(file_path, 'r') as f:
@@ -324,7 +324,7 @@ def read_txt_annotation_file(file_path, img_size):
 
     for det in content:
         (label, x, y, w, h) = det[0], float(det[1]), float(det[2]), float(det[3]), float(det[4])
-        bounding_boxes.addBoundingBox(BoundingBox(imageName=image_name, classId=label, x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=img_size))
+        bounding_boxes.append(BoundingBox(imageName=image_name, classId=label, x=x, y=y, w=w, h=h, typeCoordinates=CoordinatesType.Relative, imgSize=img_size))
 
     return bounding_boxes
 
@@ -337,12 +337,12 @@ def parse_yolo_folder(data_dir):
     annotations = os.listdir(data_dir)
     annotations = [os.path.join(data_dir, item) for item in annotations if os.path.splitext(item)[1] == '.txt']
     images = [os.path.splitext(item)[0] + '.jpg' for item in annotations]
-    bounding_boxes = BoundingBoxes(bounding_boxes=[])
+    bounding_boxes = BoundingBoxes()
 
     for (img, annot) in zip(images, annotations):
         img_size = Image.open(img).size
         image_boxes = read_txt_annotation_file(annot, img_size)
-        [bounding_boxes.addBoundingBox(bb) for bb in image_boxes.getBoundingBoxes()]
+        [bounding_boxes.append(bb) for bb in image_boxes]
 
     return bounding_boxes
 
@@ -384,7 +384,7 @@ def get_stem_database(yolo_folder, save_dir="plant_stem_db/"):
     image_list = []
 
     for image_name in yolo_boxes.getNames():
-        boxes = BoundingBoxes(bounding_boxes=[])
+        boxes = BoundingBoxes()
 
         for box in yolo_boxes.getBoundingBoxesByImageName(image_name):
             # If stem box
@@ -397,7 +397,7 @@ def get_stem_database(yolo_folder, save_dir="plant_stem_db/"):
                 x = round(x - size / 2.0)
                 y = round(y - size / 2.0)
                 box = BoundingBox(imageName=box.getImageName(), classId=box.getClassId(), x=x, y=y, w=size, h=size, imgSize=box.getImageSize())
-                boxes.addBoundingBox(box)
+                boxes.append(box)
                 continue
 
             # Else
@@ -429,7 +429,7 @@ def get_stem_database(yolo_folder, save_dir="plant_stem_db/"):
             new_y = round(new_y - new_h / 2.0)
 
             new_box = BoundingBox(imageName=image_name, classId=box.getClassId(), x=new_x, y=new_y, w=new_w, h=new_h, imgSize=box.getImageSize())
-            boxes.addBoundingBox(new_box)
+            boxes.append(new_box)
 
         # Retreive stems for each plant sub-image
         plants = boxes.getBoundingBoxByClass("maize")
@@ -467,7 +467,7 @@ def get_stem_database(yolo_folder, save_dir="plant_stem_db/"):
                 if y_max >= resolution : y_max = resolution - 1
 
                 new_box = BoundingBox(imageName=box_stem.getImageName(), classId=box_stem.getClassId()-3, x=x_min, y=y_min, w=x_max, h=y_max, format=BBFormat.XYX2Y2, imgSize=(resolution, resolution))
-                stem_boxes.addBoundingBox(new_box)
+                stem_boxes.append(new_box)
 
             # Create new reshaped image
             image = cv.imread(box_plant.getImageName())
@@ -518,7 +518,19 @@ def normalize_stem_boxes(folder, save_dir):
 
 def main(args=None):
     yolo_path = '/home/deepwater/github/darknet/data/database_5.0/val'
-    normalize_stem_boxes(yolo_path, "save/test-save-bboxes/")
+    path = "test/"
+    new_labels = {
+        "0": "maize",
+        "1": "bean",
+        "2": "leek",
+        "3": "stem_maize",
+        "4": "stem_bean",
+        "5": "stem_leek"
+    }
+    boxes = parse_yolo_folder(path)
+    boxes.mapLabels(new_labels)
+    boxes.stats()
+    boxes.drawAll("save_test/")
 
 if __name__ == "__main__":
     main()

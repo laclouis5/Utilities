@@ -21,8 +21,9 @@ def parse_xml(directories, classes=None):
         items = os.listdir(directory)
         [xml_files.append(os.path.join(directory, item)) for item in items if os.path.splitext(item)[1] == '.xml']
 
-    allBoundingBoxes = BoundingBoxes(bounding_boxes=[])
+    allBoundingBoxes = BoundingBoxes()
 
+    # Can be parallelized
     for file in xml_files:
         tree = ET.parse(file).getroot()
 
@@ -41,7 +42,7 @@ def parse_xml(directories, classes=None):
             ymax = float(object.find('bndbox').find('ymax').text)
 
             bbox = BoundingBox(name, class_id, xmin, ymin, xmax, ymax, format=BBFormat.XYX2Y2, imgSize=(int(width), int(height)))
-            allBoundingBoxes.addBoundingBox(bbox)
+            allBoundingBoxes.append(bbox)
 
     return allBoundingBoxes
 

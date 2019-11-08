@@ -57,7 +57,7 @@ class Evaluator:
         # Get all classes
         classes = []
         # Loop through all bounding boxes and separate them into GTs and detections
-        for bb in boundingboxes.getBoundingBoxes():
+        for bb in boundingboxes:
             # [imageName, class, confidence, (bb coordinates XYX2Y2)]
             if bb.getBBType() == BBType.GroundTruth:
                 groundTruths.append([
