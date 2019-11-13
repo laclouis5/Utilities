@@ -526,10 +526,7 @@ def main(args=None):
         "4": "stem_bean",
         "5": "stem_leek"
     }
-    boxes = parse_yolo_folder(path)
-    boxes.mapLabels(new_labels)
-    boxes.stats()
-    boxes.drawAll("save_test/")
+    # boxes = Parser.parse_folder(path, parse_yolo_file)
 
 if __name__ == "__main__":
     main()

@@ -163,10 +163,10 @@ def create_VOC_database(database_path, folders, test_folders, names_to_labels, n
 
 
 def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8):
-	train_dir  = os.path.join(yolo_dir, 'train')
-	val_dir    = os.path.join(yolo_dir, 'val')
+	train_dir = os.path.join(yolo_dir, 'train')
+	val_dir = os.path.join(yolo_dir, 'val')
 	train_file = os.path.join(yolo_dir, 'train.txt')
-	val_file   = os.path.join(yolo_dir, 'val.txt')
+	val_file = os.path.join(yolo_dir, 'val.txt')
 
 	if not os.path.isdir(yolo_dir):
 		os.mkdir(yolo_dir)
@@ -181,16 +181,16 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8):
 	number_train = round(ratio*len(names))
 
 	for (i, name) in enumerate(names):
-		yolo_rep   = []
-		img_path   = os.path.splitext(name)[0] + '.jpg'
+		yolo_rep = []
+		img_path = os.path.splitext(name)[0] + '.jpg'
 		if i < number_train:
 			save_dir = train_dir
 		else:
 			save_dir = val_dir
 
 		for box in boundingBoxes.getBoundingBoxesByImageName(name):
-			idenfier   = 'im_{}'.format(i)
-			label      = names_to_labels[box.getClassId()]
+			idenfier = 'im_{}'.format(i)
+			label = names_to_labels[box.getClassId()]
 			x, y, w, h = box.getRelativeBoundingBox()
 
 			yolo_rep.append('{} {} {} {} {}\n'.format(label, x, y, w, h))
@@ -296,20 +296,6 @@ def remove_to_close(folder, save_dir, class_id, margin=0.001):
 
 				else:
 					f.write('{} {} {} {} {}\n'.format(label, x, y, w, h))
-
-
-def change_path(folder, new_name, new_file):
-	'''
-	I dont remember why I wrote this function
-	'''
-	with open(folder, 'r') as f:
-		content = f.readlines()
-
-	content = [c.strip() for c in content]
-	images = [os.path.join(new_name, os.path.split(item)[1]) + '\n' for item in content]
-
-	with open(new_file, 'w') as f:
-		f.writelines(images)
 
 
 def get_image_sizes(folders):
@@ -426,7 +412,7 @@ def main(args=None):
 	boundingBoxes = Parser.parse_xml_directories(folders, classes)
 	boundingBoxes.stats()
 
-	boundingBoxes = Parser.parse_yolo_folder("/home/deepwater/yolo/train/")
+	boundingBoxes = Parser.parse_yolo_gt_folder("/home/deepwater/yolo/train/")
 	boundingBoxes.mapLabels(labels_to_names)
 	boundingBoxes.stats()
 

@@ -24,7 +24,6 @@ def parse_xml_folder(folder, classes=None):
     return boxes
 
 
-# Yolo parsers
 def parse_xml_file(file, classes=None):
     boxes = BoundingBoxes()
     tree = ET.parse(file).getroot()
@@ -49,25 +48,34 @@ def parse_xml_file(file, classes=None):
     return boxes
 
 
-def parse_yolo_directories(directories, classes=None):
+def parse_yolo_gt_directories(directories, classes=None):
     boxes = BoundingBoxes()
 
     for directory in directories:
-        boxes += parse_yolo_folder(directory, classes=classes)
+        boxes += parse_yolo_gt_folder(directory, classes=classes)
 
     return boxes
 
 
-def parse_yolo_folder(folder, classes=None):
+def parse_yolo_gt_folder(folder, classes=None):
     boxes = BoundingBoxes()
 
     for file in files_with_extension(folder, ".txt"):
-        boxes += parse_yolo_file(file, classes=classes)
+        boxes += parse_yolo_gt_file(file, classes=classes)
 
     return boxes
 
 
-def parse_yolo_file(file, classes=None):
+def parse_yolo_det_folder(folder, img_size=None, classes=None, bbFormat=BBFormat.XYWH, typeCoordinates=CoordinatesType.Relative):
+    boxes = BoundingBoxes()
+
+    for file in files_with_extension(folder, ".txt"):
+        boxes += parse_yolo_det_file(file, img_size, classes, bbFormat, typeCoordinates)
+
+    return boxes
+
+
+def parse_yolo_gt_file(file, classes=None):
     '''
     Designed to read Yolo annotation files that are in the same folders
     as their corresponding image.
@@ -112,7 +120,7 @@ def parse_yolo_det_file(file, img_size=None, classes=None, bbFormat=BBFormat.XYW
     return boxes
 
 
-def parse_yolo_detector_detections(detections, image_name, img_size=None, classes=None):
+def parse_yolo_darknet_detections(detections, image_name, img_size=None, classes=None):
     """
     Parses a detection returned by yolo detector wrapper.
     """
@@ -127,5 +135,22 @@ def parse_yolo_detector_detections(detections, image_name, img_size=None, classe
         box = BoundingBox(imageName=image_name, classId=label, x=x_topLeft, y=y_topLeft, w=x_bottomRight, h=y_bottomRight, confidence=confidence, typeCoordinates=CoordinatesType.Absolute, format=BBFormat.XYX2Y2, imgSize=img_size, bbType=BBType.Detected)
 
         boxes.append(box)
+
+    return boxes
+
+
+# Experimental
+def parse_folder(folder, file_parser, classes=None):
+    boxes = BoundingBoxes()
+
+    if file_parser == parse_yolo_file or file_parser == parse_yolo_det_file:
+        ext = ".txt"
+    elif file_parser == parse_xml_file:
+        ext = ".xml"
+    else:
+        raise IOError("File parser '{}' is not supported. Choose a file parser, not a folder or directories one.".format(file_parser))
+
+    for file in files_with_extension(folder, ext):
+        boxes += file_parser(file, classes)
 
     return boxes
