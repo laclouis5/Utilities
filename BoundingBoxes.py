@@ -42,6 +42,12 @@ class BoundingBoxes(MutableSequence):
     def getBoundingBoxByClass(self, classId):
         return BoundingBoxes([bb for bb in self if bb.getClassId() == classId])
 
+    def imageSize(self, imageName):
+        box = next((box for box in self if box.getImageName() == imageName), None)
+        if box is None:
+            raise IOError("Image with name '{}' not found, can't return its size.".format(imageName))
+        return box.getImageSize()
+
     def mapLabels(self, mapping):
         for box in self:
             box.mapLabel(mapping)

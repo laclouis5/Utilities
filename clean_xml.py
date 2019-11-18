@@ -15,7 +15,7 @@ from glob import glob, iglob
 from Evaluator import *
 from skimage import io
 import PIL
-
+import json
 import my_library
 
 def clean_xml_files(folders):
@@ -410,6 +410,35 @@ def draw_center_point(bounding_boxes, save_path="save/"):
 		img_PIL.save(img_save)
 
 
+def voc_to_coco(bounding_boxes, save_path="", ratio=0.8):
+	labels = bounding_boxes.getClasses()
+	image_paths = bounding_boxes.getNames()
+	print(labels)
+	print(image_paths)
+
+	categories = [{"supercategory": "none", "id": i, "name": str(name)}
+		for (i, name) in enumerate(labels)]
+	print(categories)
+
+	images = []
+	annotations = []
+	for i, name in enumerate(image_paths):
+		(width, height) = bounding_boxes.imageSize(name)
+		image_name = os.path.basename(name)
+
+		images.append({"id": i, "image_name": image_name, "width": width, "height": height})
+		print(images)
+
+		for boxes in bounding_boxes.getBoundingBoxesByImageName(name):
+			for box in boxes:
+				(xmin, ymin, w, h) = box.getAbsoluteBoundingBox(format=BBFormat.XYWH)
+				label = str(box.getClassId())
+
+
+
+
+
+
 def main(args=None):
 	base_path = '/media/deepwater/DATA/Shared/Louis/datasets/'
 
@@ -461,15 +490,10 @@ def main(args=None):
 
 	yolo_path = '/home/deepwater/yolo/'
 
-	rename_all_files(folders)
-
-	# clean_xml_files(folders)
-	# boundingBoxes = Parser.parse_xml_directories(folders, classes)
-	# boundingBoxes.stats()
-	#
-	# boundingBoxes = Parser.parse_yolo_gt_folder("/home/deepwater/yolo/train/")
-	# boundingBoxes.mapLabels(labels_to_names)
-	# boundingBoxes.stats()
+	clean_xml_files(folders)
+	boundingBoxes = Parser.parse_xml_directories(folders, classes)
+	boundingBoxes.stats()
+	voc_to_coco(boundingBoxes)
 
 	# xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)

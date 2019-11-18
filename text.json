@@ -1,0 +1,17 @@
+{
+  "images": [
+    {
+      "id": 0,
+      "file_name": "name"
+    },
+    {
+      "id": 1,
+      "file_name": "name2"
+    }
+  ],
+  "categories": [
+    "mais",
+    "haricot",
+    "carotte"
+  ]
+}
