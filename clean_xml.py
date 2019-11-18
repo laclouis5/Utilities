@@ -18,18 +18,50 @@ import PIL
 
 import my_library
 
-def clean_xml_files(folders) :
+def clean_xml_files(folders):
 	files = []
-	for folder in folders :
-		files += [os.path.join(folder, item) for item in os.listdir(folder) if os.path.splitext(item)[1] == ".xml"]
+	for folder in folders:
+		files += [os.path.join(folder, item)
+			for item in os.listdir(folder)
+			if os.path.splitext(item)[1] == ".xml"]
 
-	for file in files :
+	for file in files:
 		tree = ET.parse(file).getroot()
 		tree.find("path").text = file
 
-		with open(file, "w") as f :
+		with open(file, "w") as f:
 			content = ET.tostring(tree, encoding="unicode")
 			f.write(content)
+
+
+def rename_all_files(folders):
+	i = 0
+	for folder in folders:
+		for file in sorted(files_with_extension(folder, ".xml")):
+			image = os.path.splitext(file)[0] + ".jpg"
+			new_name = "im_{:09d}".format(i)
+			new_image_name = new_name + ".jpg"
+			new_xml_name = new_name + ".xml"
+			new_xml_path = os.path.join(os.path.split(file)[0], new_xml_name)
+			new_image_path = os.path.join(os.path.split(image)[0], new_image_name)
+			print(new_name)
+			print(new_image_name)
+			print(new_xml_name)
+			print(new_image_path)
+			print(new_xml_path)
+
+			tree = ET.parse(file).getroot()
+			tree.find("filename").text = new_image_name
+			tree.find("path").text = new_xml_path
+
+			with open(file, "w") as f:
+				content = ET.tostring(tree, encoding="unicode")
+				f.write(content)
+
+			os.rename(file, new_xml_path)
+			os.rename(image, new_image_path)
+
+			i += 1
 
 
 def xml_to_csv_2(boundingboxes, save_dir="", ratio=0.8, no_obj_dir=None):
@@ -41,37 +73,41 @@ def xml_to_csv_2(boundingboxes, save_dir="", ratio=0.8, no_obj_dir=None):
 	train = []
 	val = []
 
-	for (i, name) in enumerate(names) :
+	for (i, name) in enumerate(names):
 		boxes = boundingboxes.getBoundingBoxesByImageName(name)
 
-		for box in boxes :
+		for box in boxes:
 			(xmin, ymin, xmax, ymax) = box.getAbsoluteBoundingBox(BBFormat.XYX2Y2)
 			label = box.getClassId()
 			name = box.getImageName()
 
-			line = "{},{},{},{},{},{}\n".format(name, int(xmin), int(ymin), int(xmax), int(ymax), label)
+			line = "{},{},{},{},{},{}\n".format(
+				name, int(xmin), int(ymin), int(xmax), int(ymax), label)
 
-			if i < nb_train :
+			if i < nb_train:
 				train.append(line)
-			else :
+			else:
 				val.append(line)
 
 	if no_obj_dir != None:
-		no_obj_images = [os.path.join(no_obj_dir, item) for item in os.listdir(no_obj_dir) if os.path.splitext(item)[1] == '.jpg']
+		no_obj_images = [os.path.join(no_obj_dir, item)
+			for item in os.listdir(no_obj_dir)
+			if os.path.splitext(item)[1] == '.jpg']
+
 		nb_train_bo_obj = int(ratio * len(no_obj_images))
 
 		j = 0
-		for no_obj_image in no_obj_images :
+		for no_obj_image in no_obj_images:
 			no_obj_line = "{},,,,,\n".format(no_obj_image)
-			if j < nb_train_bo_obj :
+			if j < nb_train_bo_obj:
 				train.append(no_obj_line)
-			else :
+			else:
 				val.append(no_obj_line)
 			j += 1
 
-	with open(os.path.join(save_dir, "train.csv"), "w") as f_train :
+	with open(os.path.join(save_dir, "train.csv"), "w") as f_train:
 		f_train.writelines(train)
-	with open(os.path.join(save_dir, "val.csv"), "w") as f_val :
+	with open(os.path.join(save_dir, "val.csv"), "w") as f_val:
 		f_val.writelines(val)
 
 
@@ -93,12 +129,12 @@ def create_VOC_database(database_path, folders, test_folders, names_to_labels, n
 	'''
 	print('Creating VOC database...')
 
-	image_folder       = os.path.join(database_path, "JPEGImages")
+	image_folder = os.path.join(database_path, "JPEGImages")
 	annotations_folder = os.path.join(database_path, "Annotations")
-	imageset_folder    = os.path.join(database_path, "ImageSets/Main")
+	imageset_folder = os.path.join(database_path, "ImageSets/Main")
 
 	trainval_file = open(os.path.join(imageset_folder, 'trainval.txt'), 'w')
-	test_file     = open(os.path.join(imageset_folder, 'test.txt'), 'w')
+	test_file = open(os.path.join(imageset_folder, 'test.txt'), 'w')
 
 	# Stuff to count things
 	image_counter = -1
@@ -118,9 +154,9 @@ def create_VOC_database(database_path, folders, test_folders, names_to_labels, n
 
 			# Retreive path
 			image_filename = tree.find('filename').text
-			basepath       = os.path.split(tree.find('path').text)[0]
-			xml_path       = os.path.join(basepath, file)
-			image_path     = os.path.join(basepath, image_filename)
+			basepath = os.path.split(tree.find('path').text)[0]
+			xml_path = os.path.join(basepath, file)
+			image_path = os.path.join(basepath, image_filename)
 
 			# Copy XML files to the new directory
 			shutil.copy(image_path, image_folder)
@@ -128,17 +164,21 @@ def create_VOC_database(database_path, folders, test_folders, names_to_labels, n
 
 			# Rename with a unique name
 			new_image_name = '{}.jpg'.format(image_counter)
-			new_xml_name   = '{}.xml'.format(image_counter)
+			new_xml_name = '{}.xml'.format(image_counter)
 
-			os.rename(os.path.join(image_folder, image_filename), os.path.join(image_folder, new_image_name))
-			os.rename(os.path.join(annotations_folder, file), os.path.join(annotations_folder, new_xml_name))
+			os.rename(
+				os.path.join(image_folder, image_filename),
+				os.path.join(image_folder, new_image_name))
+			os.rename(
+				os.path.join(annotations_folder, file),
+				os.path.join(annotations_folder, new_xml_name))
 
 			# Change 'path' and 'filename' fields to reflect the name changes.
 			new_xml_file_path = os.path.join(annotations_folder, new_xml_name)
-			new_tree          = ET.parse(new_xml_file_path).getroot()
+			new_tree = ET.parse(new_xml_file_path).getroot()
 
 			new_tree.find('filename').text = new_image_name
-			new_tree.find('path'). text    = new_xml_file_path
+			new_tree.find('path'). text = new_xml_file_path
 
 			# Remove labels not used for training
 			for obj in new_tree.findall('object'):
@@ -215,21 +255,21 @@ def add_no_obj_images(yolo_dir, no_obj_dir, ratio=0.8):
 	Make sure that there is train.txt and val.txt in yolo foler passed
 	as argument.
 	'''
-	train_dir  = os.path.join(yolo_dir, 'train/')
-	val_dir    = os.path.join(yolo_dir, 'val/')
+	train_dir = os.path.join(yolo_dir, 'train/')
+	val_dir = os.path.join(yolo_dir, 'val/')
 	train_file = os.path.join(yolo_dir, 'train.txt')
-	val_file   = os.path.join(yolo_dir, 'val.txt')
+	val_file = os.path.join(yolo_dir, 'val.txt')
 
 	assert os.path.isfile(train_file), 'train.txt does not exist in yolo directory'
 	assert os.path.isfile(val_file), 'val.txt does not exist in yolo directory'
 
-	images      = [item for item in os.listdir(no_obj_dir) if os.path.splitext(item)[1] == '.jpg']
+	images = [item for item in os.listdir(no_obj_dir) if os.path.splitext(item)[1] == '.jpg']
 	annotations = [os.path.splitext(item)[0] + '.txt' for item in images]
 	nb_train_samples = round(ratio*len(images))
 
 	# Train folder
 	for (image, annotation) in zip(images[:nb_train_samples], annotations[:nb_train_samples]):
-		image_path      = os.path.join(no_obj_dir, image)
+		image_path = os.path.join(no_obj_dir, image)
 		save_image_path = os.path.join(train_dir, image)
 		save_annot_path = os.path.join(train_dir, annotation)
 		if os.path.exists(save_image_path):
@@ -244,7 +284,7 @@ def add_no_obj_images(yolo_dir, no_obj_dir, ratio=0.8):
 
 	# Val folder
 	for (image, annotation) in zip(images[nb_train_samples:], annotations[nb_train_samples:]):
-		image_path      = os.path.join(no_obj_dir, image)
+		image_path = os.path.join(no_obj_dir, image)
 		save_image_path = os.path.join(val_dir, image)
 		save_annot_path = os.path.join(val_dir, annotation)
 		if os.path.exists(save_image_path):
@@ -273,7 +313,9 @@ def add_no_obj_images(yolo_dir, no_obj_dir, ratio=0.8):
 
 
 def remove_to_close(folder, save_dir, class_id, margin=0.001):
-	annotations = [os.path.join(folder, item) for item in os.listdir(folder) if os.path.splitext(item)[1] == '.txt']
+	annotations = [os.path.join(folder, item)
+		for item in os.listdir(folder)
+		if os.path.splitext(item)[1] == '.txt']
 
 	for annotation in annotations:
 		with open(annotation, 'r') as f:
@@ -291,7 +333,9 @@ def remove_to_close(folder, save_dir, class_id, margin=0.001):
 					ymin = float(y) - float(h) / 2.0
 					ymax = float(y) + float(h) / 2.0
 
-					if (xmin > margin) and (ymin > margin) and (xmax < 1 - margin) and (ymax < 1 - margin):
+					if (xmin > margin) and (ymin > margin) \
+					and (xmax < 1 - margin) \
+					and (ymax < 1 - margin):
 						f.write('{} {} {} {} {}\n'.format(label, x, y, w, h))
 
 				else:
@@ -302,7 +346,8 @@ def get_image_sizes(folders):
 	sizes = []
 	for folder in folders:
 		for image_path in os.listdir(folder):
-			if os.path.splitext(image_path)[1] == '.jpg' and os.path.isfile(os.path.join(folder, os.path.splitext(image_path)[0] + '.xml')):
+			if os.path.splitext(image_path)[1] == ".jpg" \
+			and os.path.isfile(os.path.join(folder, os.path.splitext(image_path)[0] + '.xml')):
 				full_path = os.path.join(folder, image_path)
 				try:
 					image = io.imread(full_path)
@@ -320,7 +365,9 @@ def replace_label(old_label, new_label, folders):
 	'''
 	count = 0
 	for folder in folders:
-		xml_files = [os.path.join(folder, item) for item in os.listdir(folder) if os.path.splitext(item)[1] == '.xml']
+		xml_files = [os.path.join(folder, item)
+			for item in os.listdir(folder)
+			if os.path.splitext(item)[1] == '.xml']
 
 		for xml_file in xml_files:
 			tree = ET.parse(xml_file).getroot()
@@ -351,12 +398,12 @@ def draw_center_point(bounding_boxes, save_path="save/"):
 		for box in boxes:
 			xmin, ymin, xmax, ymax = box.getAbsoluteBoundingBox(BBFormat.XYX2Y2)
 			w = xmax - xmin
-			h  = ymax - ymin
-			x = xmin + w/2
-			y = ymin + h/2
+			h = ymax - ymin
+			x = xmin + w / 2
+			y = ymin + h / 2
 			color = "red"
-			x1, y1, x2, y2 = x -radius, y-radius, x+radius, y+radius
-			img_draw.ellipse(xy=(x1, y1, x2, y2),fill=color)
+			x1, y1, x2, y2 = x - radius, y - radius, x + radius, y + radius
+			img_draw.ellipse(xy=(x1, y1, x2, y2), fill=color)
 			img_draw.rectangle(xy=(xmin, ymin, xmax, ymax))
 
 
@@ -399,22 +446,30 @@ def main(args=None):
 		"training_set/2019-10-05_ctifl/haricot"
 		]
 
-	folders    = [os.path.join(base_path, folder) for folder in folders]
+	folders = [os.path.join(base_path, folder) for folder in folders]
 	no_obj_dir = '/media/deepwater/DATA/Shared/Louis/datasets/training_set/no_obj/'
 
-	classes         = ['mais','haricot', 'poireau', 'mais_tige', 'haricot_tige', 'poireau_tige']
-	names_to_labels = {'mais': 0,'haricot': 1, 'poireau': 2, 'mais_tige': 3, 'haricot_tige': 4, 'poireau_tige': 5}
-	labels_to_names = {0: "maize", 1: "bean", 2: "leek", 3: "stem_maize", 4: "stem_bean", 5: "stem_leek"}
+	classes = [
+		'mais','haricot', 'poireau', 'mais_tige',
+		'haricot_tige', 'poireau_tige']
+	names_to_labels = {
+		'mais': 0,'haricot': 1, 'poireau': 2, 'mais_tige': 3,
+		'haricot_tige': 4, 'poireau_tige': 5}
+	labels_to_names = {
+		0: "maize", 1: "bean", 2: "leek", 3: "stem_maize",
+		4: "stem_bean", 5: "stem_leek"}
 
 	yolo_path = '/home/deepwater/yolo/'
 
-	clean_xml_files(folders)
-	boundingBoxes = Parser.parse_xml_directories(folders, classes)
-	boundingBoxes.stats()
+	rename_all_files(folders)
 
-	boundingBoxes = Parser.parse_yolo_gt_folder("/home/deepwater/yolo/train/")
-	boundingBoxes.mapLabels(labels_to_names)
-	boundingBoxes.stats()
+	# clean_xml_files(folders)
+	# boundingBoxes = Parser.parse_xml_directories(folders, classes)
+	# boundingBoxes.stats()
+	#
+	# boundingBoxes = Parser.parse_yolo_gt_folder("/home/deepwater/yolo/train/")
+	# boundingBoxes.mapLabels(labels_to_names)
+	# boundingBoxes.stats()
 
 	# xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
