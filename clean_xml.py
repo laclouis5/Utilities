@@ -17,6 +17,7 @@ from skimage import io
 import PIL
 import json
 import my_library
+import random
 
 def clean_xml_files(folders):
 	files = []
@@ -411,6 +412,11 @@ def draw_center_point(bounding_boxes, save_path="save/"):
 
 
 def voc_to_coco(bounding_boxes, save_path="", ratio=0.8):
+	train_dir = os.path.join(save_path, "images_train/")
+	valid_dir = os.path.join(save_path, "images_val/")
+	create_dir(train_dir)
+	create_dir(valid_dir)
+
 	labels = bounding_boxes.getClasses()
 	image_paths = bounding_boxes.getNames()
 
@@ -433,7 +439,12 @@ def voc_to_coco(bounding_boxes, save_path="", ratio=0.8):
 	annotations_valid = []
 	annotations_train = []
 
-	for image_id, image_path in enumerate(image_paths):
+	random_gen = random.Random(498_562_751) # Seed for reproductibility
+	random_image_paths = random_gen.sample(image_paths, len(image_paths))
+
+	unique_box_id = 0
+
+	for image_id, image_path in enumerate(random_image_paths):
 		(width, height) = bounding_boxes.imageSize(image_path)
 		image_name = os.path.basename(image_path)
 
@@ -444,8 +455,13 @@ def voc_to_coco(bounding_boxes, save_path="", ratio=0.8):
 			"height": height}
 
 		if image_id < nb_train_samples:
+			new_image_path = os.path.join(train_dir, image_name)
+			shutil.copy(image_path, new_image_path)
 			images_train.append(image)
+
 		else:
+			new_image_path = os.path.join(valid_dir, image_name)
+			shutil.copy(image_path, new_image_path)
 			images_valid.append(image)
 
 		for box in bounding_boxes.getBoundingBoxesByImageName(image_path):
@@ -454,9 +470,12 @@ def voc_to_coco(bounding_boxes, save_path="", ratio=0.8):
 			category_id = category_to_id[label]
 
 			annotation = {
+				"id": unique_box_id,
 				"image_id": image_id,
 				"category_id": category_id,
 				"bbox": [int(xmin), int(ymin), int(w), int(h)]}
+
+			unique_box_id += 1
 
 			if image_id < nb_train_samples:
 				annotations_train.append(annotation)
@@ -527,11 +546,19 @@ def main(args=None):
 	labels_to_names = {
 		0: "maize", 1: "bean", 2: "leek", 3: "stem_maize",
 		4: "stem_bean", 5: "stem_leek"}
+	fr_to_en = {
+		"mais": "maize",
+		"haricot": "bean",
+		"poireau": "leek",
+		"mais_tige": "maize_stem",
+		"haricot_tige": "bean_stem",
+		"poireau_tige": "leek_stem"}
 
 	yolo_path = '/home/deepwater/yolo/'
 
 	clean_xml_files(folders)
 	boundingBoxes = Parser.parse_xml_directories(folders, classes)
+	boundingBoxes.mapLabels(fr_to_en)
 	boundingBoxes.stats()
 	voc_to_coco(boundingBoxes, ratio=0.9)
 
