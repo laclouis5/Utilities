@@ -413,30 +413,70 @@ def draw_center_point(bounding_boxes, save_path="save/"):
 def voc_to_coco(bounding_boxes, save_path="", ratio=0.8):
 	labels = bounding_boxes.getClasses()
 	image_paths = bounding_boxes.getNames()
-	print(labels)
-	print(image_paths)
 
-	categories = [{"supercategory": "none", "id": i, "name": str(name)}
-		for (i, name) in enumerate(labels)]
-	print(categories)
+	nb_train_samples = int(ratio * len(image_paths))
 
-	images = []
-	annotations = []
-	for i, name in enumerate(image_paths):
-		(width, height) = bounding_boxes.imageSize(name)
-		image_name = os.path.basename(name)
+	# Categories
+	categories = []
+	category_to_id = {}
 
-		images.append({"id": i, "image_name": image_name, "width": width, "height": height})
-		print(images)
+	for i, label in enumerate(labels):
+		category_to_id[label] = i
+		categories.append({
+			"supercategory": "none",
+			"id": i,
+			"name": str(label)})
 
-		for boxes in bounding_boxes.getBoundingBoxesByImageName(name):
-			for box in boxes:
-				(xmin, ymin, w, h) = box.getAbsoluteBoundingBox(format=BBFormat.XYWH)
-				label = str(box.getClassId())
+	# Images and Annotations
+	images_valid = []
+	images_train = []
+	annotations_valid = []
+	annotations_train = []
 
+	for image_id, image_path in enumerate(image_paths):
+		(width, height) = bounding_boxes.imageSize(image_path)
+		image_name = os.path.basename(image_path)
 
+		image = {
+			"id": image_id,
+			"image_name": image_name,
+			"width": width,
+			"height": height}
 
+		if image_id < nb_train_samples:
+			images_train.append(image)
+		else:
+			images_valid.append(image)
 
+		for box in bounding_boxes.getBoundingBoxesByImageName(image_path):
+			(xmin, ymin, w, h) = box.getAbsoluteBoundingBox(format=BBFormat.XYWH)
+			label = str(box.getClassId())
+			category_id = category_to_id[label]
+
+			annotation = {
+				"image_id": image_id,
+				"category_id": category_id,
+				"bbox": [int(xmin), int(ymin), int(w), int(h)]}
+
+			if image_id < nb_train_samples:
+				annotations_train.append(annotation)
+			else:
+				annotations_valid.append(annotation)
+
+	# Json File
+	train_file = os.path.join(save_path, "train.json")
+	valid_file = os.path.join(save_path, "val.json")
+	data_train = {
+		"images": images_train,
+		"annotations": annotations_train,
+		"categories": categories}
+	data_valid = {
+		"images": images_valid,
+		"annotations": annotations_valid,
+		"categories": categories}
+
+	json.dump(data_train, open(train_file, "w"), indent=2)
+	json.dump(data_valid, open(valid_file, "w"), indent=2)
 
 
 def main(args=None):
@@ -493,7 +533,7 @@ def main(args=None):
 	clean_xml_files(folders)
 	boundingBoxes = Parser.parse_xml_directories(folders, classes)
 	boundingBoxes.stats()
-	voc_to_coco(boundingBoxes)
+	voc_to_coco(boundingBoxes, ratio=0.9)
 
 	# xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
