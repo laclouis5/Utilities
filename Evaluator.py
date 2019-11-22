@@ -146,6 +146,26 @@ class Evaluator:
         return ret
 
 
+    def getCocoMetric(self, boundingBoxes):
+        return [self.GetPascalVOCMetrics(boundingboxes, thresh)
+            for thresh in self.cocoThresholds]
+
+
+    def getAP(self, boundingBoxes, thresh=0.5):
+        AP = [res["AP"]
+            for res in self.GetPascalVOCMetrics(boundingboxes, thresh)]
+        return 0 if len(AP) == 0 else sum(AP) / len(AP)
+
+
+    def getCocoAP(self, boundingBoxes):
+        AP = [self.getAP(boundingBoxes, thresh)
+            for thresh in self.cocoThresholds]
+        return 0 if len(AP) == 0 else sum(AP) / len(AP)
+
+
+    cocoThresholds = [thresh / 100 for thresh in range(50, 100, 5)]
+
+
     def PlotPrecisionRecallCurve(self,
                                  boundingBoxes,
                                  IOUThreshold=0.5,
