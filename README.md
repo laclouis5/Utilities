@@ -1,13 +1,14 @@
-# ToolBox for Dealing with Bounding Box Objects and Evaluating mAP
+# ToolBox for Dealing with Bounding Box Objects and Evaluating mAP for Detection Task
 Based on this [this repo](https://github.com/rafaelpadilla/Object-Detection-Metrics#how-to-use-this-project).
 
 # Usage
 The framework is built around:
 
 - A `BoundingBox` class that represents a rectangular box, its label and confidence if it's a detection box.
-- A `BoundingBoxes` class that is an iterable object and that herits from all `Sequence` usual methods such has `.append()`, `.remove()` and subscript getter `box = boxes[index]`.
+- A `BoundingBoxes` class that is an iterable object heriting from `Sequence`. You can use usual methods such has `.append()`, `.remove()` and subscript `box = boxes[index]`.
 - A `Parser` class with static methods to parse Yolo and Pascal VOC annotations and that return `BoundingBox`.
 - An `Evaluator` class to compute mAP@0.5 and Coco AP.
+- Misc utilities to convert `BoundingBoxes` object to various database format including Yolo and Coco.
 
 ## BoundingBox
 Object that stores a rectangular object detection box. 3 formats are supported:
@@ -20,11 +21,11 @@ The box is internaly stored in a third format `(x_topLeft, y_topLeft, width, hei
 - `CoordinatesTypes.Relative`: coordinates are  normalized with image size and are in `[0, 1[`.
 - `CoordinatesTypes.Absolute`: real box coordinates in pixels stored as `float` to avoid loosing precision with rounding errors.
 
-The bounding box has also a label (`string`) and an optional `confidence` (`float` in `[0, 1]`) if the type of the box is `BBType.Detected` (`.GroundTruth` otherwise).
+The bounding box has also a label (`str`) and an optional `confidence` (`float` in `[0, 1]`) if the type of the box is `BBType.Detected` (`.GroundTruth` otherwise).
 
 `BoundingBox` comes with setters to retreive the absolute or relative bounding box in the specified format and coordinates type.
 
-If openCV is defined a method to add the rectangular box in an image is provided.
+If openCV is defined, a method to add the boudning box in an image is provided.
 
 ## BoundingBoxes
 This object is a sub-class of `MutableSequence` and can be used like a standard array of `BoundingBox` objects. Filtering methods are provided to retreive specific data. A save function allows you to build a Yolo database. Methods to draw annotations on images are also present (joblib may be required for parallel computations).
