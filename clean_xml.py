@@ -411,11 +411,12 @@ def draw_center_point(bounding_boxes, save_path="save/"):
 		img_PIL.save(img_save)
 
 
-def voc_to_coco(bounding_boxes, save_path="", ratio=0.8):
-	train_dir = os.path.join(save_path, "images_train/")
-	valid_dir = os.path.join(save_path, "images_val/")
-	create_dir(train_dir)
-	create_dir(valid_dir)
+def voc_to_coco(bounding_boxes, save_path="", ratio=0.8, copy_images=True):
+	if copy_images:
+		train_dir = os.path.join(save_path, "images_train/")
+		valid_dir = os.path.join(save_path, "images_val/")
+		create_dir(train_dir)
+		create_dir(valid_dir)
 
 	labels = bounding_boxes.getClasses()
 	image_paths = bounding_boxes.getNames()
@@ -450,22 +451,24 @@ def voc_to_coco(bounding_boxes, save_path="", ratio=0.8):
 
 		image = {
 			"id": image_id,
-			"image_name": image_name,
+			"file_name": image_name,
 			"width": width,
 			"height": height}
 
 		if image_id < nb_train_samples:
-			new_image_path = os.path.join(train_dir, image_name)
-			shutil.copy(image_path, new_image_path)
+			if copy_images:
+				new_image_path = os.path.join(train_dir, image_name)
+				shutil.copy(image_path, new_image_path)
 			images_train.append(image)
 
 		else:
-			new_image_path = os.path.join(valid_dir, image_name)
-			shutil.copy(image_path, new_image_path)
+			if copy_images:
+				new_image_path = os.path.join(valid_dir, image_name)
+				shutil.copy(image_path, new_image_path)
 			images_valid.append(image)
 
 		for box in bounding_boxes.getBoundingBoxesByImageName(image_path):
-			(xmin, ymin, w, h) = box.getAbsoluteBoundingBox(format=BBFormat.XYWH)
+			(x, y, w, h) = box.getAbsoluteBoundingBox(format=BBFormat.XYWH)
 			label = str(box.getClassId())
 			category_id = category_to_id[label]
 
@@ -473,7 +476,11 @@ def voc_to_coco(bounding_boxes, save_path="", ratio=0.8):
 				"id": unique_box_id,
 				"image_id": image_id,
 				"category_id": category_id,
-				"bbox": [int(xmin), int(ymin), int(w), int(h)]}
+				"iscrowd": 0,
+				"ignore": 0,
+				"area": w * h,
+				"bbox": [int(x), int(y), int(w), int(h)],
+				"segmentation": [[x, y, x, y + h, x + w, y + h, x + w, h]]}
 
 			unique_box_id += 1
 
@@ -560,7 +567,7 @@ def main(args=None):
 	boundingBoxes = Parser.parse_xml_directories(folders, classes)
 	boundingBoxes.mapLabels(fr_to_en)
 	boundingBoxes.stats()
-	voc_to_coco(boundingBoxes, ratio=0.9)
+	voc_to_coco(boundingBoxes, ratio=0.9, copy_images=False)
 
 	# xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
