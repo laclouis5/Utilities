@@ -440,7 +440,7 @@ def voc_to_coco(bounding_boxes, save_path="", ratio=0.8, copy_images=True):
 	annotations_valid = []
 	annotations_train = []
 
-	random_gen = random.Random(498_562_751) # Seed for reproductibility
+	random_gen = random.Random(498_562_751) # Fix seed for reproductibility
 	random_image_paths = random_gen.sample(image_paths, len(image_paths))
 
 	unique_box_id = 0
