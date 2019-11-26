@@ -4,9 +4,14 @@ Based on this [this repo](https://github.com/rafaelpadilla/Object-Detection-Metr
 # Usage
 The framework is built around:
 
-- A `BoundingBox` class that represents a rectangular box, its label and confidence if it's a detection box.
-- A `BoundingBoxes` class that is an iterable object heriting from `Sequence`. You can use usual methods such has `.append()`, `.remove()` and subscript `box = boxes[index]`.
-- A `Parser` class with static methods to parse Yolo and Pascal VOC annotations and that return `BoundingBox`.
+- A `BoundingBox` class that represents a rectangular box along with its label and confidence, if it's a detection box.
+- A `BoundingBoxes` class that is an iterable object heriting from `Sequence`. You can use usual methods such has:
+    - `boxes.append(box)` and `boxes.extend(otherBoxes)`
+    - `boxes.remove(box)` and `boxes.clear()`
+    - `box = boxes[index]`, `boxes[index] = box` and `boxes.insert(index, box)`
+    - `boxes = gt_boxes + det_boxes` (join two `BoundingBoxes` objects)
+    - etc...
+- A `Parser` package with functions to parse Yolo, Pascal VOC and Coco annotations to `BoundingBoxes`.
 - An `Evaluator` class to compute mAP@0.5 and Coco AP.
 - Misc utilities to convert `BoundingBoxes` object to various database format including Yolo and Coco.
 
