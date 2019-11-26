@@ -24,6 +24,9 @@ class BoundingBoxes(MutableSequence):
     def __delitem__(self, box):
         self._boundingBoxes.remove(box)
 
+    def __add__(self, otherBoxes):
+        return BoundingBoxes(self._boundingBoxes + otherBoxes._boundingBoxes)
+
     def insert(self, index, box):
         self._boundingBoxes.insert(index, box)
 
