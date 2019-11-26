@@ -15,6 +15,27 @@ The framework is built around:
 - An `Evaluator` class to compute mAP@0.5 and Coco AP.
 - Misc utilities to convert `BoundingBoxes` object to various database format including Yolo and Coco.
 
+## Example
+```Python
+# Import things
+
+coco_boxes = Parser.parse_coco("path_to_json_gt_file", "path_to_json_det_file")
+xml_boxes = Parser.parse_xml_folder("folder_with_xml_files", ["dog", "cat"])
+yolo_boxes = Parser.parse_yolo_gt_folder("path_to_yolo_gts")
+yolo_boxes.mapLabels({1: "dog", 2: "cat"})
+
+# When using darknet framework:
+for image_name in images:
+    detections = performDetect(image_name, ...)
+    yolo_boxes += Parser.parse_yolo_darknet_detections(detections, image_name)
+    
+all_boxes = coco_boxes + xml_boxes + yolo_boxes
+mAP = Evaluator.getAP(all_boxes, 0.5)
+cocoAP = Evaluator.getCocoAP(all_boxes)
+
+Evaluator.PlotPrecisionRecallCurve(all_boxes, ...)
+```
+
 ## BoundingBox
 Object that stores a rectangular object detection box. 3 formats are supported:
 
@@ -44,9 +65,5 @@ Evaluate a `BoundingBox` object that contains ground truths and assotiated detec
 boxes = Parser.parse_xml_file(path_to_xml_file)
 boxes = Parser.parse_xml_folder(path_to_folder)
 boxes = Parser.parse_xml_directories([path_1, path_2, ...])
-
-# Parse Yolo style annotations
-boxes = Parser.parse_txt_file(path_to_xml_file)
-boxes = Parser.parse_txt_folder(path_to_folder)
-boxes = Parser.parse_txt_directories([path_1, path_2, ...])
+...
 ```
