@@ -412,6 +412,7 @@ def draw_center_point(bounding_boxes, save_path="save/"):
 
 
 def voc_to_coco(bounding_boxes, save_path="", ratio=0.8, copy_images=True):
+	# Create dir if necessary
 	if copy_images:
 		train_dir = os.path.join(save_path, "images_train/")
 		valid_dir = os.path.join(save_path, "images_val/")
@@ -420,7 +421,6 @@ def voc_to_coco(bounding_boxes, save_path="", ratio=0.8, copy_images=True):
 
 	labels = bounding_boxes.getClasses()
 	image_paths = bounding_boxes.getNames()
-
 	nb_train_samples = int(ratio * len(image_paths))
 
 	# Categories
@@ -429,10 +429,11 @@ def voc_to_coco(bounding_boxes, save_path="", ratio=0.8, copy_images=True):
 
 	for i, label in enumerate(labels):
 		category_to_id[label] = i
-		categories.append({
+		category = {
 			"supercategory": "none",
 			"id": i,
-			"name": str(label)})
+			"name": str(label)}
+		categories.append(category)
 
 	# Images and Annotations
 	images_valid = []
@@ -492,6 +493,7 @@ def voc_to_coco(bounding_boxes, save_path="", ratio=0.8, copy_images=True):
 	# Json File
 	train_file = os.path.join(save_path, "train.json")
 	valid_file = os.path.join(save_path, "val.json")
+
 	data_train = {
 		"images": images_train,
 		"annotations": annotations_train,
@@ -547,6 +549,10 @@ def main(args=None):
 	classes = [
 		'mais','haricot', 'poireau', 'mais_tige',
 		'haricot_tige', 'poireau_tige']
+	# classes = [
+	# 	'mais','haricot', 'poireau']
+	# classes = [
+	# 	'mais_tige','haricot_tige', 'poireau_tige']
 	names_to_labels = {
 		'mais': 0,'haricot': 1, 'poireau': 2, 'mais_tige': 3,
 		'haricot_tige': 4, 'poireau_tige': 5}
@@ -563,11 +569,15 @@ def main(args=None):
 
 	yolo_path = '/home/deepwater/yolo/'
 
-	clean_xml_files(folders)
-	boundingBoxes = Parser.parse_xml_directories(folders, classes)
-	boundingBoxes.mapLabels(fr_to_en)
-	boundingBoxes.stats()
-	voc_to_coco(boundingBoxes, ratio=0.9, copy_images=False)
+	# clean_xml_files(folders)
+	# boundingBoxes = Parser.parse_xml_directories(folders, classes)
+	# boundingBoxes.mapLabels(fr_to_en)
+	# boundingBoxes.stats()
+	# voc_to_coco(boundingBoxes, ratio=0.9, copy_images=False)
+
+	boxes = Parser.parse_coco_gt("val.json")
+	boxes += Parser.parse_coco_gt("train.json")
+	boxes.stats()
 
 	# xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)

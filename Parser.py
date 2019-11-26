@@ -4,6 +4,7 @@ from BoundingBox import BoundingBox
 from BoundingBoxes import BoundingBoxes
 from utils import *
 import PIL
+import json
 
 # XML Parsers
 def parse_xml_directories(directories, classes=None):
@@ -137,6 +138,75 @@ def parse_yolo_darknet_detections(detections, image_name, img_size=None, classes
         boxes.append(box)
 
     return boxes
+
+
+def parse_coco(gt, det, image_path=None):
+    (images, categories, img_sizes) = parse_coco_params(gt)
+    gt_boxes = parse_coco_gt(gt, image_path)
+    det_boxes = parse_coco_det(det, images, categories, img_sizes, image_path)
+
+    return gt_boxes + det_boxes
+
+
+def parse_coco_gt(gt, img_path=None):
+    gt_dict = json.load(open(gt, "r"))
+
+    categories = {item["id"]: item["name"] for item in gt_dict["categories"]}
+    images = {item["id"]: item["file_name"] for item in gt_dict["images"]}
+    img_sizes = {item["id"]: (item["width"], item["height"]) for item in gt_dict["images"]}
+
+    boxes = BoundingBoxes()
+
+    for annotation in gt_dict["annotations"]:
+        img_name = images[annotation["image_id"]]
+        if img_path is not None:
+            img_name = os.path.join(img_path, img_name)
+        label = categories[annotation["category_id"]]
+        (x, y, w, h) = annotation["bbox"]
+        (width, height) = img_sizes[annotation["image_id"]]
+
+        box = BoundingBox(imageName=img_name, classId=label, x=float(x), y=float(y), w=float(w), h=float(h), imgSize=(int(width), int(height)), bbType=BBType.GroundTruth, format=BBFormat.XYWH)
+
+        boxes.append(box)
+
+    return boxes
+
+
+def parse_coco_det(det, images, categories, img_sizes=None, img_path=None):
+    det_dict = json.load(open(det, "r"))
+
+    boxes = BoundingBoxes()
+
+    for detection in det_dict:
+        img_name = images[detection["image_id"]]
+        if img_path is not None:
+            img_name = os.path.join(img_path, img_name)
+
+        label = categories[detection["category_id"]]
+        (x, y, w, h) = detection["bbox"]
+        confidence = detection["score"]
+
+        if img_sizes is None:
+            img_size = None
+        else:
+            (width, height) = img_sizes[annotation["image_id"]]
+            img_size = (int(width), int(height))
+
+        box = BoundingBox(imageName=img_name, classId=label, x=float(x), y=float(y), w=float(w), h=float(h), imgSize=img_size, bbType=BBType.Detected, format=BBFormat.XYWH, classConfidence=float(score))
+
+        boxes.append(box)
+
+    return boxes
+
+
+def parse_coco_params(gt):
+    gt_dict = json.load(open(gt, "r"))
+
+    categories = {item["id"]: item["name"] for item in gt_dict["categories"]}
+    images = {item["id"]: item["file_name"] for item in gt_dict["images"]}
+    img_sizes = {item["id"]: (item["width"], item["height"]) for item in gt_dict["images"]}
+
+    return (images, categories, img_sizes)
 
 
 # Experimental
