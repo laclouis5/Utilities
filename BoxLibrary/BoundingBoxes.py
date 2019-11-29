@@ -144,8 +144,8 @@ class BoundingBoxes(MutableSequence):
             save_name = os.path.join(save_dir, os.path.basename(name))
 
         image = cv.imread(name)
-        self.drawCVImage(image, save_name)
-        cv.imwrite(name, image)
+        self.drawCVImage(image, name)
+        cv.imwrite(name, save_name)
 
     def drawAll(self, save_dir="annotated_images/"):
         """

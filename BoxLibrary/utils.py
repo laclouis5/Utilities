@@ -1,5 +1,6 @@
 from enum import Enum
 import os
+import PIL
 
 class MethodAveragePrecision(Enum):
     """
@@ -49,14 +50,6 @@ class BBFormat(Enum):
     XYX2Y2 = 1
     XYC = 2
 
-def convertToAbsCenterValues(xmin, ymin, xmax, ymax):
-    x = (xmax + xmin) / 2.0
-    y = (ymax + ymin) / 2.0
-    w = xmax - xmin
-    h = ymax - ymin
-
-    return (x, y, w, h)
-
 # size => (width, height) of the image
 # box => (X1, X2, Y1, Y2) of the bounding box
 def convertToRelativeValues(size, box):
@@ -74,7 +67,6 @@ def convertToRelativeValues(size, box):
     # w => bounding_box_width / width_of_the_image
     # h => bounding_box_height / height_of_the_image
     return (x, y, w, h)
-
 
 # size => (width, height) of the image
 # box => (centerX, centerY, w, h) of the bounding box relative to the image
@@ -96,13 +88,14 @@ def convertToAbsoluteValues(size, box):
     # (xMin, yMin, Xmax, yMax)
     return (xIn, yIn, xEnd, yEnd)
 
-
 def files_with_extension(folder, extension):
     return [os.path.join(folder, item)
             for item in os.listdir(folder)
             if os.path.splitext(item)[1] == extension]
 
-
 def create_dir(directory):
     if not os.path.isdir(directory):
         os.mkdir(directory)
+
+def image_size(image):
+    return PIL.Image.open(image_name).size
