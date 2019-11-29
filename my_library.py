@@ -7,9 +7,8 @@ import cv2 as cv
 from PIL import Image, ImageDraw
 import os
 from joblib import Parallel, delayed
-from BoundingBoxes import BoundingBoxes
-from BoundingBox import BoundingBox
-from utils import *
+
+from BoxLibrary import *
 
 def egi_mask(image, thresh=1.15):
     image_np = np.array(image).astype(float)

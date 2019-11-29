@@ -1,23 +1,19 @@
 '''
 This library provides tools for converting VOC style XML to different formats (RetinaNet, YOLO).
 '''
-
 import os
 import shutil
 import lxml.etree as ET
 from random import shuffle
-from parse_xml import parse_xml
-from utils import *
-from BoundingBoxes import BoundingBoxes
-from BoundingBox import BoundingBox
-import Parser
+
 from glob import glob, iglob
-from Evaluator import *
 from skimage import io
 import PIL
 import json
 import my_library
 import random
+
+from BoxLibrary import *
 
 def clean_xml_files(folders):
 	files = []
@@ -569,15 +565,19 @@ def main(args=None):
 
 	yolo_path = '/home/deepwater/yolo/'
 
-	# clean_xml_files(folders)
-	# boundingBoxes = Parser.parse_xml_directories(folders, classes)
-	# boundingBoxes.mapLabels(fr_to_en)
-	# boundingBoxes.stats()
-	# voc_to_coco(boundingBoxes, ratio=0.9, copy_images=False)
+	clean_xml_files(folders)
+	boundingBoxes = Parser.parse_xml_directories(folders, classes)
+	boundingBoxes.mapLabels(fr_to_en)
+	boundingBoxes.stats()
+	voc_to_coco(boundingBoxes, ratio=0.9, copy_images=False)
 
-	boxes = Parser.parse_coco_gt("val.json")
-	boxes += Parser.parse_coco_gt("train.json")
+	# boxes = Parser.parse_coco_gt("val.json")
+	# boxes += Parser.parse_coco_gt("train.json")
+	# boxes.stats()
+
+	boxes = Parser.parse_coco("groundTruth.json", "results.json")
 	boxes.stats()
+	Evaluator().printAPs(boxes)
 
 	# xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)

@@ -1,9 +1,9 @@
-from BoundingBox import *
-from utils import *
+from .BoundingBox import BoundingBox
+from .utils import *
+
 from random import shuffle
 import matplotlib.pyplot as plt
 from collections.abc import MutableSequence
-
 
 class BoundingBoxes(MutableSequence):
     def __init__(self, bounding_boxes=None):
