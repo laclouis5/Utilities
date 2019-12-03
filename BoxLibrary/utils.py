@@ -98,4 +98,4 @@ def create_dir(directory):
         os.mkdir(directory)
 
 def image_size(image):
-    return PIL.Image.open(image_name).size
+    return PIL.Image.open(image).size
