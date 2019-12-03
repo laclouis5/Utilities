@@ -18,9 +18,7 @@ from BoxLibrary import *
 def clean_xml_files(folders):
 	files = []
 	for folder in folders:
-		files += [os.path.join(folder, item)
-			for item in os.listdir(folder)
-			if os.path.splitext(item)[1] == ".xml"]
+		files += files_with_extension(folder, ".xml")
 
 	for file in files:
 		tree = ET.parse(file).getroot()
@@ -107,7 +105,7 @@ def xml_to_csv_2(boundingboxes, save_dir="", ratio=0.8, no_obj_dir=None):
 	with open(os.path.join(save_dir, "val.csv"), "w") as f_val:
 		f_val.writelines(val)
 
-
+# Outdated, need update
 def create_VOC_database(database_path, folders, test_folders, names_to_labels, no_eval=False):
 	'''
 	Takes as input folders to images with corresponding VOC XML files and outputs
@@ -310,9 +308,7 @@ def add_no_obj_images(yolo_dir, no_obj_dir, ratio=0.8):
 
 
 def remove_to_close(folder, save_dir, class_id, margin=0.001):
-	annotations = [os.path.join(folder, item)
-		for item in os.listdir(folder)
-		if os.path.splitext(item)[1] == '.txt']
+	annotations = files_with_extension(folder, ".txt")
 
 	for annotation in annotations:
 		with open(annotation, 'r') as f:
@@ -362,9 +358,7 @@ def replace_label(old_label, new_label, folders):
 	'''
 	count = 0
 	for folder in folders:
-		xml_files = [os.path.join(folder, item)
-			for item in os.listdir(folder)
-			if os.path.splitext(item)[1] == '.xml']
+		xml_files = files_with_extension(folder, ".xml")
 
 		for xml_file in xml_files:
 			tree = ET.parse(xml_file).getroot()
@@ -381,6 +375,9 @@ def replace_label(old_label, new_label, folders):
 
 
 def draw_center_point(bounding_boxes, save_path="save/"):
+	radius = 10
+	color="red"
+
 	if not os.path.isdir(save_path):
 		os.mkdir(save_path)
 
@@ -390,24 +387,18 @@ def draw_center_point(bounding_boxes, save_path="save/"):
 		boxes = bounding_boxes.getBoundingBoxesByImageName(name)
 		img_PIL = PIL.Image.open(image)
 		img_draw = PIL.ImageDraw.Draw(img_PIL)
-		radius = 10
 
 		for box in boxes:
-			xmin, ymin, xmax, ymax = box.getAbsoluteBoundingBox(BBFormat.XYX2Y2)
-			w = xmax - xmin
-			h = ymax - ymin
-			x = xmin + w / 2
-			y = ymin + h / 2
-			color = "red"
+			xmin, ymin, xmax, ymax = box.getAbsoluteBoundingBox(BBFormat.XYC)
 			x1, y1, x2, y2 = x - radius, y - radius, x + radius, y + radius
+
 			img_draw.ellipse(xy=(x1, y1, x2, y2), fill=color)
 			img_draw.rectangle(xy=(xmin, ymin, xmax, ymax))
-
 
 		img_PIL.save(img_save)
 
 
-def voc_to_coco(bounding_boxes, save_path="", ratio=0.8, copy_images=True):
+def voc_to_coco(bounding_boxes, save_path="", ratio=0.8, no_obj_path=None, copy_images=False):
 	# Create dir if necessary
 	if copy_images:
 		train_dir = os.path.join(save_path, "images_train/")
@@ -441,8 +432,9 @@ def voc_to_coco(bounding_boxes, save_path="", ratio=0.8, copy_images=True):
 	random_image_paths = random_gen.sample(image_paths, len(image_paths))
 
 	unique_box_id = 0
+	image_id = 0
 
-	for image_id, image_path in enumerate(random_image_paths):
+	for image_path in random_image_paths:
 		(width, height) = bounding_boxes.imageSize(image_path)
 		image_name = os.path.basename(image_path)
 
@@ -485,6 +477,39 @@ def voc_to_coco(bounding_boxes, save_path="", ratio=0.8, copy_images=True):
 				annotations_train.append(annotation)
 			else:
 				annotations_valid.append(annotation)
+
+		image_id += 1
+
+	# No-obj images
+	if no_obj_path is not None:
+		no_obj_images = files_with_extension(no_obj_path, ".jpg")
+		no_obj_images = random_gen.sample(no_obj_images, len(no_obj_images))
+		nb_no_obj_samples = int(ratio * len(no_obj_images))
+
+		for i, no_obj_image in enumerate(no_obj_images):
+			image_name = os.path.basename(no_obj_image)
+			(width, height) = image_size(no_obj_image)
+
+			image = {
+				"id": image_id,
+				"file_name": image_name,
+				"width": width,
+				"height": height}
+
+			if i < nb_no_obj_samples:
+				images_train.append(image)
+				if copy_images:
+					new_image_path = os.path.join(train_dir, image_name)
+					shutil.copy(no_obj_image, new_image_path)
+
+			else:
+				images_valid.append(image)
+				if copy_images:
+					new_image_path = os.path.join(valid_dir, image_name)
+					shutil.copy(no_obj_image, new_image_path)
+
+			image_id += 1
+
 
 	# Json File
 	train_file = os.path.join(save_path, "train.json")
@@ -530,13 +555,14 @@ def main(args=None):
 		'training_set/2019-05-23_montoldre/haricot/4',
 		"training_set/2019-07-03_larrere/poireau/3",
 		"training_set/2019-07-03_larrere/poireau/4",
-		"training_set/2019-09-25_montoldre/mais/1",
-		"training_set/2019-09-25_montoldre/mais/2",
-		"training_set/2019-09-25_montoldre/mais/3",
-		"training_set/2019-09-25_montoldre/haricot",
-		"training_set/2019-10-05_ctifl/mais_1",
-		"training_set/2019-10-05_ctifl/mais_2",
-		"training_set/2019-10-05_ctifl/haricot"
+		# Dataset 5.0
+		# "training_set/2019-09-25_montoldre/mais/1",
+		# "training_set/2019-09-25_montoldre/mais/2",
+		# "training_set/2019-09-25_montoldre/mais/3",
+		# "training_set/2019-09-25_montoldre/haricot",
+		# "training_set/2019-10-05_ctifl/mais_1",
+		# "training_set/2019-10-05_ctifl/mais_2",
+		# "training_set/2019-10-05_ctifl/haricot"
 		]
 
 	folders = [os.path.join(base_path, folder) for folder in folders]
@@ -569,15 +595,15 @@ def main(args=None):
 	boundingBoxes = Parser.parse_xml_directories(folders, classes)
 	boundingBoxes.mapLabels(fr_to_en)
 	boundingBoxes.stats()
-	voc_to_coco(boundingBoxes, ratio=0.9, copy_images=False)
+	voc_to_coco(boundingBoxes, no_obj_path=no_obj_dir)
 
 	# boxes = Parser.parse_coco_gt("val.json")
 	# boxes += Parser.parse_coco_gt("train.json")
 	# boxes.stats()
 
-	boxes = Parser.parse_coco("groundTruth.json", "results.json")
-	boxes.stats()
-	Evaluator().printAPs(boxes)
+	# boxes = Parser.parse_coco("groundTruth.json", "results.json")
+	# boxes.stats()
+	# Evaluator().printAPs(boxes)
 
 	# xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
 	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
