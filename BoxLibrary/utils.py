@@ -14,6 +14,16 @@ class MethodAveragePrecision(Enum):
     ElevenPointInterpolation = 1
 
 
+class EvaluationMethod(Enum):
+    """
+    Method to compute precision and recall.
+
+        Created by Louis Lac (2020)
+    """
+    IoU = 0
+    Distance = 1
+
+
 class CoordinatesType(Enum):
     """
     Class representing if the coordinates are relative to the
@@ -50,42 +60,30 @@ class BBFormat(Enum):
     XYX2Y2 = 1
     XYC = 2
 
-# size => (width, height) of the image
-# box => (X1, X2, Y1, Y2) of the bounding box
-def convertToRelativeValues(size, box):
-    dw = 1. / (size[0])
-    dh = 1. / (size[1])
-    cx = (box[1] + box[0]) / 2.0
-    cy = (box[3] + box[2]) / 2.0
-    w = box[1] - box[0]
-    h = box[3] - box[2]
-    x = cx * dw
-    y = cy * dh
-    w = w * dw
-    h = h * dh
-    # x,y => (bounding_box_center)/width_of_the_image
-    # w => bounding_box_width / width_of_the_image
-    # h => bounding_box_height / height_of_the_image
+# Equivalent to xyx2y2_to_xywh()
+def convertToAbsCenterValues(xmin, ymin, xmax, ymax):
+    x = (xmax + xmin) / 2.0
+    y = (ymax + ymin) / 2.0
+    w = xmax - xmin
+    h = ymax - ymin
     return (x, y, w, h)
 
-# size => (width, height) of the image
-# box => (centerX, centerY, w, h) of the bounding box relative to the image
+def convertToRelativeValues(size, box):
+    # box is (xmin, ymin, xmax, ymax)
+    x = (box[1] + box[0]) / 2.0 / size[0]
+    y = (box[3] + box[2]) / 2.0 / size[1]
+    w = (box[1] - box[0]) / size[0]
+    h = (box[3] - box[2]) / size[1]
+
+    return (x, y, w, h)
+
 def convertToAbsoluteValues(size, box):
-    # w_box = round(size[0] * box[2])
-    # h_box = round(size[1] * box[3])
-    xIn = (2 * float(box[0]) - float(box[2])) * size[0] / 2
-    yIn = (2 * float(box[1]) - float(box[3])) * size[1] / 2
-    xEnd = xIn + float(box[2]) * size[0]
-    yEnd = yIn + float(box[3]) * size[1]
-    if xIn < 0:
-        xIn = 0
-    if yIn < 0:
-        yIn = 0
-    if xEnd >= size[0]:
-        xEnd = size[0] - 1
-    if yEnd >= size[1]:
-        yEnd = size[1] - 1
-    # (xMin, yMin, Xmax, yMax)
+    # box is (x, y, w, h)
+    xIn = (box[0] - box[2] / 2) * size[0]
+    yIn = (box[1] - box[3] / 2) * size[1]
+    xEnd = (box[0] + box[2] / 2) * size[0]
+    yEnd = (box[1] + box[3] / 2) * size[1]
+
     return (xIn, yIn, xEnd, yEnd)
 
 def files_with_extension(folder, extension):

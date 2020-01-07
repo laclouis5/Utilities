@@ -532,6 +532,7 @@ def main(args=None):
 	base_path = '/media/deepwater/DATA/Shared/Louis/datasets/'
 
 	folders = [
+		# Dataset 4.2
 		'training_set/mais_haricot_feverole_pois/50/1',
 		'training_set/mais_haricot_feverole_pois/50/2',
 		'training_set/mais_haricot_feverole_pois/60/1',
@@ -556,13 +557,13 @@ def main(args=None):
 		"training_set/2019-07-03_larrere/poireau/3",
 		"training_set/2019-07-03_larrere/poireau/4",
 		# Dataset 5.0
-		# "training_set/2019-09-25_montoldre/mais/1",
-		# "training_set/2019-09-25_montoldre/mais/2",
-		# "training_set/2019-09-25_montoldre/mais/3",
-		# "training_set/2019-09-25_montoldre/haricot",
-		# "training_set/2019-10-05_ctifl/mais_1",
-		# "training_set/2019-10-05_ctifl/mais_2",
-		# "training_set/2019-10-05_ctifl/haricot"
+		"training_set/2019-09-25_montoldre/mais/1",
+		"training_set/2019-09-25_montoldre/mais/2",
+		"training_set/2019-09-25_montoldre/mais/3",
+		"training_set/2019-09-25_montoldre/haricot",
+		"training_set/2019-10-05_ctifl/mais_1",
+		"training_set/2019-10-05_ctifl/mais_2",
+		"training_set/2019-10-05_ctifl/haricot"
 		]
 
 	folders = [os.path.join(base_path, folder) for folder in folders]
@@ -595,7 +596,7 @@ def main(args=None):
 	boundingBoxes = Parser.parse_xml_directories(folders, classes)
 	boundingBoxes.mapLabels(fr_to_en)
 	boundingBoxes.stats()
-	voc_to_coco(boundingBoxes, no_obj_path=no_obj_dir)
+	# voc_to_coco(boundingBoxes, no_obj_path=no_obj_dir)
 
 	# boxes = Parser.parse_coco_gt("val.json")
 	# boxes += Parser.parse_coco_gt("train.json")

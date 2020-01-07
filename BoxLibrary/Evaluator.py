@@ -4,6 +4,7 @@ from collections import Counter
 
 import matplotlib.pyplot as plt
 import numpy as np
+from math import hypot
 
 from .BoundingBox import BoundingBox
 from .BoundingBoxes import BoundingBoxes
@@ -16,7 +17,8 @@ class Evaluator:
 
     def GetPascalVOCMetrics(self,
                             boundingboxes,
-                            IOUThreshold=0.5,
+                            thresh=0.5,
+                            evalMetric=EvaluationMethod.IoU,
                             method=MethodAveragePrecision.EveryPointInterpolation):
         """Get the metrics used by the VOC Pascal 2012 challenge.
         Get
@@ -93,26 +95,47 @@ class Evaluator:
                 # print('dect %s => %s' % (dects[d][0], dects[d][3],))
                 # Find ground truth image
                 gt = [gt for gt in gts if gt[0] == dd[0]]
-                iouMax = sys.float_info.min
-                for j in range(len(gt)):
-                    # print('Ground truth gt => %s' % (gt[j][3],))
-                    iou = Evaluator.iou(dd[3], gt[j][3])
-                    if iou > iouMax:
-                        iouMax = iou
-                        jmax = j
-                # Assign detection as true positive/don't care/false positive
-                if iouMax >= IOUThreshold:
-                    if det[dd[0]][jmax] == 0:
-                        TP[d] = 1  # count as true positive
-                        det[dd[0]][jmax] = 1  # flag as already 'seen'
-                        # print("TP")
+
+                if evalMetric == EvaluationMethod.IoU:
+                    iouMax = sys.float_info.min
+                    for j in range(len(gt)):
+                        # print('Ground truth gt => %s' % (gt[j][3],))
+                        iou = Evaluator.iou(dd[3], gt[j][3])
+                        if iou > iouMax:
+                            iouMax = iou
+                            jmax = j
+                    # Assign detection as true positive/don't care/false positive
+                    if iouMax >= thresh:
+                        if det[dd[0]][jmax] == 0:
+                            TP[d] = 1  # count as true positive
+                            det[dd[0]][jmax] = 1  # flag as already 'seen'
+                            # print("TP")
+                        else:
+                            FP[d] = 1  # count as false positive
+                            # print("FP")
+                    # - A detected "cat" is overlaped with a GT "cat" with IOU >= thresh.
                     else:
                         FP[d] = 1  # count as false positive
                         # print("FP")
-                # - A detected "cat" is overlaped with a GT "cat" with IOU >= IOUThreshold.
+                elif evalMetric == EvaluationMethod.Distance:
+                    distMin = sys.float_info.max
+                    for j in range(len(gt)):
+                        dist = Evaluator.distance(dd[3], gt[j][3])
+                        if dist < distMin:
+                            distMin = dist
+                            jmin = j
+                    print("Sum: {}".format(sumOfDists))
+                    if distMin <= thresh:
+                        if det[dd[0]][jmin] == 0:
+                            TP[d] = 1
+                            det[dd[0]][jmin] = 1
+                        else:
+                            FP[d] = 1
+                    else:
+                        FP[d] = 1
                 else:
-                    FP[d] = 1  # count as false positive
-                    # print("FP")
+                    raise IOError("evalMetric should be of type EvaluationMethod")
+
             # compute precision, recall and average precision
             acc_FP = np.cumsum(FP)
             acc_TP = np.cumsum(TP)
@@ -139,14 +162,14 @@ class Evaluator:
         return ret
 
 
-    def getCocoMetrics(self, boundingBoxes):
+    def getCocoMetrics(self, boundingBoxes,):
         return [self.GetPascalVOCMetrics(boundingBoxes, thresh)
             for thresh in self.cocoThresholds]
 
 
-    def getAP(self, boundingBoxes, thresh=0.5):
+    def getAP(self, boundingBoxes, thresh=0.5, method=EvaluationMethod.IoU):
         AP = [res["AP"]
-            for res in self.GetPascalVOCMetrics(boundingBoxes, thresh)]
+            for res in self.GetPascalVOCMetrics(boundingBoxes, thresh, method)]
         return sum(AP) / len(AP) if AP else 0.0
 
 
@@ -166,14 +189,17 @@ class Evaluator:
         print("coco AP: {:.2%}".format(cocoAP))
 
 
-    def printAPsByClass(self, boxes, thresh=0.5):
+    def printAPsByClass(self, boxes, thresh=0.5, method=EvaluationMethod.IoU):
         if thresh is not None:
-            metrics = self.GetPascalVOCMetrics(boxes, thresh)
+            metrics = self.GetPascalVOCMetrics(boxes, thresh, method)
             print("AP@{} by class:".format(thresh))
             for metric in metrics:
                 label = metric["class"]
                 AP = metric["AP"]
-                print("  {:<13}: {:.2%}".format(label, AP))
+                totalPositive = metric["total positives"]
+                TP = metric["total TP"]
+                FP = metric["total FP"]
+                print("  {:<13} - AP: {:.2%}  npos: {}  TP: {}  FP: {}".format(label, AP, totalPositive, TP, FP))
 
 
     def PlotPrecisionRecallCurve(self,
@@ -420,6 +446,19 @@ class Evaluator:
         iou = interArea / union
         assert iou >= 0
         return iou
+
+    @staticmethod
+    # Format [xMin, yMin, xMax, yMax]
+    def distance(boxA, boxB):
+        cxa = (boxA[0] + boxA[2]) / 2
+        cya = (boxA[1] + boxA[3]) / 2
+        cxb = (boxB[0] + boxB[2]) / 2
+        cyb = (boxB[1] + boxB[3]) / 2
+
+        vx = cxb - cxa
+        vy = cyb - cyb
+
+        return hypot(vx, vy)
 
     # boxA = (Ax1,Ay1,Ax2,Ay2)
     # boxB = (Bx1,By1,Bx2,By2)

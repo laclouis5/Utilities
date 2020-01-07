@@ -154,12 +154,13 @@ class BoundingBox:
             bbox = self.getRelativeBoundingBox()
         else:
             bbox = self.getAbsoluteBoundingBox(format)
-            bbox = (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
+            # bbox = (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
+            bbox = (bbox[0], bbox[1], bbox[2], bbox[3])
 
         if self._bbType == BBType.Detected:
-            return "{} {} {} {} {} {}\n".format(self._classId, self._classConfidence, bbox[0], bbox[1], bbox[2], bbox[3])
+            return "{} {} {} {} {} {}\n".format(self._classId, self._classConfidence, *bbox)
         else:
-            return "{} {} {} {} {}\n".format(self._classId, bbox[0], bbox[1], bbox[2], bbox[3])
+            return "{} {} {} {} {}\n".format(self._classId, *bbox)
 
 
     def addIntoImage(self, image, color=None, thickness=2):
