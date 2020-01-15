@@ -42,7 +42,7 @@ class BoundingBoxes(MutableSequence):
     def getBoundingBoxesByImageName(self, imageName):
         return BoundingBoxes([d for d in self if d.getImageName() == imageName])
 
-    def getBoundingBoxesByClass(self, classId):
+    def getBoundingBoxByClass(self, classId):
         return BoundingBoxes([bb for bb in self if bb.getClassId() == classId])
 
     def getDetectionBoxesAsNPArray(self):
@@ -164,9 +164,5 @@ class BoundingBoxes(MutableSequence):
 
         Parallel(n_jobs=-1, backend="multiprocessing")(delayed(self.drawImage)(name, sd) for (name, sd) in zip(names, save_dir))
 
-    def clone(self):
-        newBoundingBoxes = BoundingBoxes()
-        for d in self:
-            det = BoundingBox.clone(d)
-            newBoundingBoxes.add(det)
-        return newBoundingBoxes
+    def copy(self):
+        newBoundingBoxes = BoundingBoxes([box.copy() for box in self._boundingBoxes])
