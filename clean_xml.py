@@ -197,7 +197,7 @@ def create_VOC_database(database_path, folders, test_folders, names_to_labels, n
 	print('Done!')
 
 
-def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8):
+def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8, shuffled=True):
 	train_dir = os.path.join(yolo_dir, 'train')
 	val_dir = os.path.join(yolo_dir, 'val')
 	train_file = os.path.join(yolo_dir, 'train.txt')
@@ -211,20 +211,25 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8):
 		os.mkdir(val_dir)
 
 	names = boundingBoxes.getNames()
-	shuffle(names)
+	new_names = []
+
+	if shuffled == True:
+		shuffle(names)
 
 	number_train = round(ratio*len(names))
 
 	for (i, name) in enumerate(names):
 		yolo_rep = []
 		img_path = os.path.splitext(name)[0] + '.jpg'
+		idenfier = 'im_{}'.format(i)
+		new_names.append(idenfier + ".jpg")
+
 		if i < number_train:
 			save_dir = train_dir
 		else:
 			save_dir = val_dir
 
 		for box in boundingBoxes.getBoundingBoxesByImageName(name):
-			idenfier = 'im_{}'.format(i)
 			label = names_to_labels[box.getClassId()]
 			x, y, w, h = box.getRelativeBoundingBox()
 
@@ -235,14 +240,26 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8):
 
 		shutil.copy(img_path, os.path.join(save_dir, idenfier + '.jpg'))
 
-	with open(train_file, 'w') as f_write_1, open(val_file, 'w') as f_write_2:
-		for item in iglob(os.path.join(train_dir, '*.jpg')):
-			tail = os.path.split(item)[1]
-			f_write_1.write('{}\n'.format(os.path.join('data/train/', tail)))
+	with open(train_file, "w") as f:
+		for item in new_names[:number_train]:
+			relative_path = os.path.split(item)[1]
+			new_path = os.path.join("data/train/", relative_path)
+			f.write(new_path + "\n")
 
-		for item in iglob(os.path.join(val_dir, '*.jpg')):
-			tail = os.path.split(item)[1]
-			f_write_2.write('{}\n'.format(os.path.join('data/val/', tail)))
+	with open(val_file, "w") as f:
+		for item in new_names[number_train:]:
+			relative_path = os.path.split(item)[1]
+			new_path = os.path.join("data/val/", relative_path)
+			f.write(new_path + "\n")
+
+	# with open(train_file, 'w') as f_write_1, open(val_file, 'w') as f_write_2:
+	# 	for item in iglob(os.path.join(train_dir, '*.jpg')):
+	# 		tail = os.path.split(item)[1]
+	# 		f_write_1.write('{}\n'.format(os.path.join('data/train/', tail)))
+	#
+	# 	for item in iglob(os.path.join(val_dir, '*.jpg')):
+	# 		tail = os.path.split(item)[1]
+	# 		f_write_2.write('{}\n'.format(os.path.join('data/val/', tail)))
 
 
 def add_no_obj_images(yolo_dir, no_obj_dir, ratio=0.8):
@@ -566,8 +583,10 @@ def main(args=None):
 		"training_set/2019-10-05_ctifl/haricot"
 		]
 
+	folders = ["haricot_debug_montoldre_2"]
+
 	folders = [os.path.join(base_path, folder) for folder in folders]
-	no_obj_dir = '/media/deepwater/DATA/Shared/Louis/datasets/training_set/no_obj/'
+	# no_obj_dir = '/media/deepwater/DATA/Shared/Louis/datasets/training_set/no_obj/'
 
 	classes = [
 		'mais','haricot', 'poireau', 'mais_tige',
@@ -593,8 +612,8 @@ def main(args=None):
 	yolo_path = '/home/deepwater/yolo/'
 
 	clean_xml_files(folders)
-	boundingBoxes = Parser.parse_xml_directories(folders, classes)
-	boundingBoxes.mapLabels(fr_to_en)
+	boundingBoxes = Parser.parse_xml_directories(folders, ["haricot", "haricot_tige"])
+	# boundingBoxes.mapLabels(names_to_labels)
 	boundingBoxes.stats()
 	# voc_to_coco(boundingBoxes, no_obj_path=no_obj_dir)
 
@@ -607,7 +626,7 @@ def main(args=None):
 	# Evaluator().printAPs(boxes)
 
 	# xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
-	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels)
+	xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels, shuffled=False, ratio=0)
 	# add_no_obj_images(yolo_path, no_obj_dir)
 
 	# test.get_square_database(yolo_path, '/home/deepwater/yolo_tige_sqr/')
