@@ -580,10 +580,13 @@ def main(args=None):
 		"training_set/2019-09-25_montoldre/haricot",
 		"training_set/2019-10-05_ctifl/mais_1",
 		"training_set/2019-10-05_ctifl/mais_2",
-		"training_set/2019-10-05_ctifl/haricot"
+		"training_set/2019-10-05_ctifl/haricot",
+		# Dataset 6.0
+		"haricot_debug_montoldre_2",
+		"mais_debug_montoldre_2",
 		]
 
-	folders = ["haricot_debug_montoldre_2"]
+	# folders = ["haricot_montoldre_sequential"]
 
 	folders = [os.path.join(base_path, folder) for folder in folders]
 	# no_obj_dir = '/media/deepwater/DATA/Shared/Louis/datasets/training_set/no_obj/'
@@ -612,9 +615,9 @@ def main(args=None):
 	yolo_path = '/home/deepwater/yolo/'
 
 	clean_xml_files(folders)
-	boundingBoxes = Parser.parse_xml_directories(folders, ["haricot", "haricot_tige"])
+	# boundingBoxes = Parser.parse_xml_directories(folders, classes)
 	# boundingBoxes.mapLabels(names_to_labels)
-	boundingBoxes.stats()
+	# boundingBoxes.stats()
 	# voc_to_coco(boundingBoxes, no_obj_path=no_obj_dir)
 
 	# boxes = Parser.parse_coco_gt("val.json")
@@ -626,7 +629,7 @@ def main(args=None):
 	# Evaluator().printAPs(boxes)
 
 	# xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
-	xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels, shuffled=False, ratio=0)
+	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels, shuffled=True, ratio=0.9)
 	# add_no_obj_images(yolo_path, no_obj_dir)
 
 	# test.get_square_database(yolo_path, '/home/deepwater/yolo_tige_sqr/')
