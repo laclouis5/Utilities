@@ -79,16 +79,16 @@ class Evaluator:
             [ap, mpre, mrec, ii] = Evaluator.CalculateAveragePrecision(rec, prec)
 
             ret.append({
-                'class': label,
-                'precision': prec,
-                'recall': rec,
-                'AP': ap,
-                'interpolated precision': mpre,
-                'interpolated recall': mrec,
-                'total positives': npos,
-                'total detections': len(TP),
-                'total TP': sum(TP),
-                'total FP': sum([not tp for tp in TP])
+                "class": label,
+                "precision": prec,
+                "recall": rec,
+                "AP": ap,
+                "interpolated precision": mpre,
+                "interpolated recall": mrec,
+                "total positives": npos,
+                "total detections": len(TP),
+                "total TP": sum(TP),
+                "total FP": sum([not tp for tp in TP])
             })
 
         return ret
