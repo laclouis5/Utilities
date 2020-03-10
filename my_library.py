@@ -9,6 +9,8 @@ import os
 from joblib import Parallel, delayed
 
 from BoxLibrary import *
+from numba import jit
+import random
 
 def egi_mask(image, thresh=1.15):
     image_np = np.array(image).astype(float)
@@ -97,7 +99,6 @@ def compute_struct_tensor(image_path, w, sigma=1.5):
 
         return img_coherency, img_orientation
 
-
 def plot_bbox_distribution(boundingBoxes):
     classes = boundingBoxes.getClasses()
     cmap = matplotlib.cm.get_cmap(name='gist_rainbow')
@@ -133,6 +134,59 @@ def plot_bbox_distribution(boundingBoxes):
     plt.title("Box center distribution")
     plt.show()
 
+def pix2pix_square_stem_db(boxes, size=1024, save_dir="pix_to_pix/", label_size=2/100):
+    images_dir = os.path.join(save_dir, "images/")
+    segmentation_masks = os.path.join(save_dir, "masks/")
+
+    create_dir(save_dir)
+    create_dir(images_dir)
+    create_dir(segmentation_masks)
+
+    # labels = boxes.getClasses()
+    image_names = boxes.getNames()
+    random.shuffle(image_names)
+
+    # Do things withs labels to assign colors
+    hard_coded_colors = {
+        "maize_stem": (0, 0, 255), # Red
+        "bean_stem": (0, 255, 0), # Green
+        "leek_stem": (255, 0, 0) # Blue
+    }
+
+    im_id = 0
+    for name in image_names:
+        image_boxes = boxes.getBoundingBoxesByImageName(name)
+        image = cv.imread(name)
+        (img_height, img_width) = image.shape[:2]
+        keypoint_radius = int(label_size * img_height / 2)
+        segmentation_image = np.zeros((img_height, img_width, 3), np.uint8)
+        out_basename = "{}".format(im_id).zfill(6)
+        segmented_name = os.path.join(segmentation_masks, "im_{}.png".format(out_basename))
+        img_out_name = os.path.join(images_dir, "im_{}.png".format(out_basename))
+
+        for box in image_boxes:
+            (x, y, _, _) = box.getAbsoluteBoundingBox(format=BBFormat.XYC)
+            label = box.getClassId()
+            color = hard_coded_colors[label]
+            # print(name, label, color, x, y)
+            cv.circle(segmentation_image, center=(int(x), int(y)), radius=keypoint_radius, color=color, thickness=cv.FILLED)
+
+        padding = (img_width - img_height) / 2
+        xmin = int(padding)
+        xmax = int(img_width - padding)
+
+        segmentation_image = segmentation_image[:, xmin:xmax]
+        assert segmentation_image.shape[0] == segmentation_image.shape[1]
+        segmentation_image = cv.resize(segmentation_image, dsize=(size, size), interpolation=cv.INTER_LINEAR)
+
+        image = image[:, xmin:xmax]
+        image = cv.resize(image, dsize=(size, size), interpolation=cv.INTER_LINEAR)
+
+        cv.imwrite(segmented_name, segmentation_image)
+        cv.imwrite(img_out_name, image)
+
+        im_id += 1
+
 
 def get_square_database(yolo_dir, save_dir=''):
     '''
@@ -165,7 +219,7 @@ def get_square_database(yolo_dir, save_dir=''):
             assert img_out.size[0] == img_out.size[1], "Can't crop to a square shape."
 
             # print(os.path.join(save_dir, d, os.path.basename(image)))
-            img_out.save(os.path.join(save_dir, d, os.path.basename(image)), quality=100)
+            img_out.save(os.path.join(save_dir, d, os.path.basename(image)))
 
         annotations = [os.path.join(directory, item) for item in os.listdir(directory)]
         annotations = [item for item in annotations if os.path.splitext(item)[1] == '.txt']

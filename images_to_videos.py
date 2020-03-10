@@ -4,7 +4,7 @@ import cv2 as cv
 import os
 
 img = []
-path = "aggr_tracking"
+path = "homography"
 
 list = os.listdir(path)
 list = [os.path.join(path, item) for item in list if os.path.splitext(item)[1] == ".jpg"]

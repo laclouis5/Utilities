@@ -76,6 +76,7 @@ def convertToRelativeValues(size, box):
     w = (box[1] - box[0]) / size[0]
     h = (box[3] - box[2]) / size[1]
 
+    # (xCenter, yCenter, width, height)
     return (x, y, w, h)
 
 def convertToAbsoluteValues(size, box):

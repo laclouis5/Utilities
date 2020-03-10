@@ -582,8 +582,8 @@ def main(args=None):
 		"training_set/2019-10-05_ctifl/mais_2",
 		"training_set/2019-10-05_ctifl/haricot",
 		# Dataset 6.0
-		"haricot_debug_montoldre_2",
-		"mais_debug_montoldre_2",
+		# "haricot_debug_montoldre_2",
+		# "mais_debug_montoldre_2",
 		]
 
 	# folders = ["haricot_montoldre_sequential"]
@@ -591,13 +591,14 @@ def main(args=None):
 	folders = [os.path.join(base_path, folder) for folder in folders]
 	# no_obj_dir = '/media/deepwater/DATA/Shared/Louis/datasets/training_set/no_obj/'
 
-	classes = [
-		'mais','haricot', 'poireau', 'mais_tige',
-		'haricot_tige', 'poireau_tige']
+	# classes = [
+	# 	'mais','haricot', 'poireau', 'mais_tige',
+	# 	'haricot_tige', 'poireau_tige']
 	# classes = [
 	# 	'mais','haricot', 'poireau']
-	# classes = [
-	# 	'mais_tige','haricot_tige', 'poireau_tige']
+	classes = [
+		'mais_tige','haricot_tige', 'poireau_tige']
+
 	names_to_labels = {
 		'mais': 0,'haricot': 1, 'poireau': 2, 'mais_tige': 3,
 		'haricot_tige': 4, 'poireau_tige': 5}
@@ -615,9 +616,12 @@ def main(args=None):
 	yolo_path = '/home/deepwater/yolo/'
 
 	clean_xml_files(folders)
-	# boundingBoxes = Parser.parse_xml_directories(folders, classes)
-	# boundingBoxes.mapLabels(names_to_labels)
-	# boundingBoxes.stats()
+	boundingBoxes = Parser.parse_xml_directories(folders, classes)
+	boundingBoxes.mapLabels(fr_to_en)
+	boundingBoxes.stats()
+
+	my_library.pix2pix_square_stem_db(boundingBoxes, label_size=8/100)
+
 	# voc_to_coco(boundingBoxes, no_obj_path=no_obj_dir)
 
 	# boxes = Parser.parse_coco_gt("val.json")

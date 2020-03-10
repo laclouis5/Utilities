@@ -217,6 +217,7 @@ class BoundingBoxes(MutableSequence):
 
     def squareStemBoxes(self, ratio=0.075):
         boxes = BoundingBoxes()
+
         for box in self:
             if "stem" not in box.getClassId():
                 boxes.append(box)
