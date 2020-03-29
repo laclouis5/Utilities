@@ -545,6 +545,103 @@ def voc_to_coco(bounding_boxes, save_path="", ratio=0.8, no_obj_path=None, copy_
 	json.dump(data_valid, open(valid_file, "w"), indent=2)
 
 
+def voc_to_coreML(bounding_boxes, save_dir="", ratio=0.8, no_obj_path=None):
+	"""
+	Converter from VOC annotation to CoreML annotation format for Apple
+	platforms.
+	"""
+	# Directories
+	train_dir = os.path.join(save_dir, "Training")
+	valid_dir = os.path.join(save_dir, "Validation")
+
+	create_dir(save_dir)
+	create_dir(train_dir)
+	create_dir(valid_dir)
+
+	# JSON file names
+	train_json_file = os.path.join(train_dir, "annotations.json")
+	valid_json_file = os.path.join(valid_dir, "annotations.json")
+
+	# JSON files
+	train_data = []
+	valid_data = []
+
+	# Split and shuffle data
+	image_names = bounding_boxes.getNames()
+	nb_train = int(len(image_names) * ratio)
+
+	random_generator = random.Random(498_562_751)
+	random_image_names = random_generator.sample(image_names, len(image_names))
+
+	# Loop through images
+	for id, image_name in enumerate(random_image_names):
+		# New unique name to avoid name conflits
+		new_image_name = "image_{}.jpg".format(id)
+
+		if id < nb_train:
+			main_dir = train_dir
+		else:
+			main_dir = valid_dir
+
+		# Copy image in save folder
+		shutil.copy(image_name, os.path.join(main_dir, new_image_name))
+
+		image_boxes = []
+		# Loop through image boxes
+		for box in bounding_boxes.getBoundingBoxesByImageName(image_name):
+			(x, y, w, h) = box.getAbsoluteBoundingBox(BBFormat.XYWH)
+			label = str(box.getClassId())
+
+			image_boxes.append({
+				"label": label,
+				"coordinates": {
+					"x": x, "y": y, "width": w, "height": h
+				}
+			})
+
+		# Fill-up JSON data
+		image_annotation = {
+			"imagefilename": new_image_name,
+			"annotation": image_boxes
+		}
+
+		if id < nb_train:
+			train_data.append(image_annotation)
+		else:
+			valid_data.append(image_annotation)
+
+	# Same thing with images without objects
+	if no_obj_path is not None:
+		image_names = files_with_extension(no_obj_path, ".jpg")
+		random_image_names = random_generator.sample(image_names, len(image_names))
+
+		nb_train = int(ratio * len(random_image_names))
+
+		for id, image_name in enumerate(random_image_names):
+			new_image_name = "no-obj_image_{}.jpg".format(id)
+
+			if id < nb_train:
+				main_dir = train_dir
+			else:
+				main_dir = valid_dir
+
+			shutil.copy(image_name, os.path.join(main_dir, new_image_name))
+
+			annotation = {
+				"imagefilename": new_image_name,
+				"annotation": []
+			}
+
+			if id < nb_train:
+				train_data.append(annotation)
+			else:
+				valid_data.append(annotation)
+
+	# Dump JSON files
+	json.dump(train_data, open(train_json_file, "w"), indent=2)
+	json.dump(valid_data, open(valid_json_file, "w"), indent=2)
+
+
 def main(args=None):
 	base_path = '/media/deepwater/DATA/Shared/Louis/datasets/'
 
@@ -582,22 +679,21 @@ def main(args=None):
 		"training_set/2019-10-05_ctifl/mais_2",
 		"training_set/2019-10-05_ctifl/haricot",
 		# Dataset 6.0
-		# "haricot_debug_montoldre_2",
-		# "mais_debug_montoldre_2",
+		"haricot_debug_montoldre_2",
+		"mais_debug_montoldre_2",
 		]
 
 	# folders = ["haricot_montoldre_sequential"]
 
 	folders = [os.path.join(base_path, folder) for folder in folders]
-	# no_obj_dir = '/media/deepwater/DATA/Shared/Louis/datasets/training_set/no_obj/'
+	no_obj_dir = '/media/deepwater/DATA/Shared/Louis/datasets/training_set/no_obj/'
 
-	# classes = [
-	# 	'mais','haricot', 'poireau', 'mais_tige',
-	# 	'haricot_tige', 'poireau_tige']
+	classes = [
+		'mais','haricot', 'poireau', 'mais_tige',
+		'haricot_tige', 'poireau_tige']
 	# classes = [
 	# 	'mais','haricot', 'poireau']
-	classes = [
-		'mais_tige','haricot_tige', 'poireau_tige']
+	# classes = ['mais_tige','haricot_tige', 'poireau_tige']
 
 	names_to_labels = {
 		'mais': 0,'haricot': 1, 'poireau': 2, 'mais_tige': 3,
@@ -620,7 +716,9 @@ def main(args=None):
 	boundingBoxes.mapLabels(fr_to_en)
 	boundingBoxes.stats()
 
-	my_library.pix2pix_square_stem_db(boundingBoxes, label_size=8/100)
+	voc_to_coreML(boundingBoxes, save_dir="CoreML", no_obj_path=no_obj_dir)
+
+	# my_library.pix2pix_square_stem_db(boundingBoxes, label_size=8/100)
 
 	# voc_to_coco(boundingBoxes, no_obj_path=no_obj_dir)
 
