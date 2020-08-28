@@ -59,6 +59,20 @@ def rename_all_files(folders):
 			i += 1
 
 
+def normalized_stem_boxes(boxes,
+	ratio=5/100, labels=["haricot_tige", "mais_tige", "poireau_tige"]
+):
+	normalized_boxes = BoundingBoxes()
+
+	for box in boxes:
+		if box.getClassId() in labels:
+			normalized_boxes.append(box.normalized(ratio))
+		else:
+			normalized_boxes.append(box)
+
+	return normalized_boxes
+
+
 def xml_to_csv_2(boundingboxes, save_dir="", ratio=0.8, no_obj_dir=None):
 	names = boundingboxes.getNames()
 	shuffle(names)
@@ -104,6 +118,7 @@ def xml_to_csv_2(boundingboxes, save_dir="", ratio=0.8, no_obj_dir=None):
 		f_train.writelines(train)
 	with open(os.path.join(save_dir, "val.csv"), "w") as f_val:
 		f_val.writelines(val)
+
 
 # Outdated, need update
 def create_VOC_database(database_path, folders, test_folders, names_to_labels, no_eval=False):
@@ -214,7 +229,8 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8, shuffled=
 	new_names = []
 
 	if shuffled == True:
-		shuffle(names)
+		random_gen = random.Random(498_562_751)
+		names = random_gen.sample(names, len(names))
 
 	number_train = round(ratio*len(names))
 
@@ -262,7 +278,7 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8, shuffled=
 	# 		f_write_2.write('{}\n'.format(os.path.join('data/val/', tail)))
 
 
-def add_no_obj_images(yolo_dir, no_obj_dir, ratio=0.8):
+def add_no_obj_images(yolo_dir, no_obj_dir, ratio, shuffle=True):
 	'''
 	Make sure that there is train.txt and val.txt in yolo foler passed
 	as argument.
@@ -276,6 +292,11 @@ def add_no_obj_images(yolo_dir, no_obj_dir, ratio=0.8):
 	assert os.path.isfile(val_file), 'val.txt does not exist in yolo directory'
 
 	images = [item for item in os.listdir(no_obj_dir) if os.path.splitext(item)[1] == '.jpg']
+
+	if shuffle:
+		rand_gen = random.Random(478_737_303)
+		images = rand_gen.sample(images, len(images))
+
 	annotations = [os.path.splitext(item)[0] + '.txt' for item in images]
 	nb_train_samples = round(ratio*len(images))
 
@@ -312,14 +333,14 @@ def add_no_obj_images(yolo_dir, no_obj_dir, ratio=0.8):
 	#Train
 	with open(train_file, 'r') as f:
 		content = f.readlines()
-	shuffle(content)
+	random.shuffle(content)
 	with open(train_file, 'w') as f:
 		f.writelines(content)
 
 	#Val
 	with open(val_file, 'r') as f:
 		content = f.readlines()
-	shuffle(content)
+	random.shuffle(content)
 	with open(val_file, 'w') as f:
 		f.writelines(content)
 
@@ -679,18 +700,16 @@ def main(args=None):
 		"training_set/2019-10-05_ctifl/mais_2",
 		"training_set/2019-10-05_ctifl/haricot",
 		# Dataset 6.0
-		"haricot_debug_montoldre_2",
-		"mais_debug_montoldre_2",
-		]
+		# "haricot_debug_montoldre_2",
+		# "mais_debug_montoldre_2",
+	]
 
 	# folders = ["haricot_montoldre_sequential"]
 
 	folders = [os.path.join(base_path, folder) for folder in folders]
 	no_obj_dir = '/media/deepwater/DATA/Shared/Louis/datasets/training_set/no_obj/'
 
-	classes = [
-		'mais','haricot', 'poireau', 'mais_tige',
-		'haricot_tige', 'poireau_tige']
+	classes = ["mais", "haricot", "poireau", 'mais_tige', 'haricot_tige', 'poireau_tige']
 	# classes = [
 	# 	'mais','haricot', 'poireau']
 	# classes = ['mais_tige','haricot_tige', 'poireau_tige']
@@ -698,6 +717,7 @@ def main(args=None):
 	names_to_labels = {
 		'mais': 0,'haricot': 1, 'poireau': 2, 'mais_tige': 3,
 		'haricot_tige': 4, 'poireau_tige': 5}
+	# names_to_labels = {'mais_tige': 0, 'haricot_tige': 1, 'poireau_tige': 2}
 	labels_to_names = {
 		0: "maize", 1: "bean", 2: "leek", 3: "stem_maize",
 		4: "stem_bean", 5: "stem_leek"}
@@ -709,17 +729,23 @@ def main(args=None):
 		"haricot_tige": "bean_stem",
 		"poireau_tige": "leek_stem"}
 
-	yolo_path = '/home/deepwater/yolo/'
+	yolo_path = "/home/deepwater/yolo/"
 
 	clean_xml_files(folders)
+	boundingBoxes = Parser.parse_yolo_gt_folder("/home/deepwater/github/darknet/data/database_4.2_norm_5%/val")
 	boundingBoxes = Parser.parse_xml_directories(folders, classes)
-	boundingBoxes.mapLabels(fr_to_en)
+	# boundingBoxes.mapLabels(fr_to_en)
+	boundingBoxes = normalized_stem_boxes(boundingBoxes, ratio=5/100, labels=["3", "4", "5"])
+	boundingBoxes.save()
 	boundingBoxes.stats()
 
-	voc_to_coreML(boundingBoxes, save_dir="CoreML", no_obj_path=no_obj_dir)
+	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels,
+	# 	shuffled=True, ratio=0.8)
+	# add_no_obj_images(yolo_path, no_obj_dir,
+	# 	ratio=0.8, shuffle=True)
 
+	# voc_to_coreML(boundingBoxes, save_dir="CoreML", no_obj_path=no_obj_dir)
 	# my_library.pix2pix_square_stem_db(boundingBoxes, label_size=8/100)
-
 	# voc_to_coco(boundingBoxes, no_obj_path=no_obj_dir)
 
 	# boxes = Parser.parse_coco_gt("val.json")
@@ -731,8 +757,6 @@ def main(args=None):
 	# Evaluator().printAPs(boxes)
 
 	# xml_to_csv_2(boundingBoxes, no_obj_dir=no_obj_dir)
-	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels, shuffled=True, ratio=0.9)
-	# add_no_obj_images(yolo_path, no_obj_dir)
 
 	# test.get_square_database(yolo_path, '/home/deepwater/yolo_tige_sqr/')
 	# test.draw_bbox_images("/home/deepwater/yolo/val/", "/home/deepwater/yolo/result/")
