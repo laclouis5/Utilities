@@ -8,6 +8,7 @@ from collections.abc import MutableSequence
 import cv2 as cv
 from joblib import Parallel, delayed
 
+
 class BoundingBoxes(MutableSequence):
     def __init__(self, bounding_boxes=None):
         if bounding_boxes is not None:

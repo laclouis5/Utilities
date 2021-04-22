@@ -6,6 +6,7 @@ import lxml.etree as ET
 import PIL
 import json
 
+
 class Parser:
     @staticmethod
     def parse_xml_directories(directories, classes=None):
