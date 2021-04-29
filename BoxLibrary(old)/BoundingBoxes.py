@@ -4,19 +4,16 @@ from .utils import *
 from random import shuffle
 import matplotlib.pyplot as plt
 from collections.abc import MutableSequence
-from collections import defaultdict
 
 import cv2 as cv
 from joblib import Parallel, delayed
-from tqdm import tqdm
-
-from lxml import etree
-from pathlib import Path
-
 
 class BoundingBoxes(MutableSequence):
     def __init__(self, bounding_boxes=None):
-        self._boundingBoxes = bounding_boxes or []
+        if bounding_boxes is not None:
+            self._boundingBoxes = bounding_boxes
+        else:
+            self._boundingBoxes = []
 
     def __len__(self):
         return len(self._boundingBoxes)
@@ -33,10 +30,6 @@ class BoundingBoxes(MutableSequence):
     def __add__(self, otherBoxes):
         return BoundingBoxes(self._boundingBoxes + otherBoxes._boundingBoxes)
 
-    def __iadd__(self, other):
-        self._boundingBoxes += other._boundingBoxes
-        return self
-
     def insert(self, index, box):
         self._boundingBoxes.insert(index, box)
 
@@ -47,7 +40,7 @@ class BoundingBoxes(MutableSequence):
         Returns:
             [str]: The sorted list of clas ids.
         """
-        return sorted({box.getClassId() for box in self})
+        return sorted(set([box.getClassId() for box in self]))
 
     def getNames(self):
         """
@@ -56,7 +49,7 @@ class BoundingBoxes(MutableSequence):
         Returns:
             [str]: The sorted list of image names.
         """
-        return sorted({box.getImageName() for box in self})
+        return sorted(set([box.getImageName() for box in self]))
 
     def getBoundingBoxesByType(self, bbType):
         return BoundingBoxes([d for d in self if d.getBBType() == bbType])
@@ -66,15 +59,9 @@ class BoundingBoxes(MutableSequence):
 
     def getBoundingBoxByClass(self, classId):
         if isinstance(classId, list):
-            return BoundingBoxes([bb for bb in self if bb.getClassId() in set(classId)])
+            return BoundingBoxes([bb for bb in self if bb.getClassId() in classId])
         else:
             return BoundingBoxes([bb for bb in self if bb.getClassId() == classId])
-
-    def getBoxesBy(self, key_provider):
-        output = defaultdict(BoundingBoxes)
-        for box in self:
-            output[key_provider(box)].append(box)
-        return output
 
     def getDetectionBoxesAsNPArray(self):
         import numpy as np
@@ -186,7 +173,13 @@ class BoundingBoxes(MutableSequence):
             box.moveBy(dx, dy, typeCoordinates, imgSize)
 
     def boxes_in(self, rect):
-        return BoundingBoxes([box for box in self if box.centerIsIn(rect)])
+        boxes = []
+
+        for box in self:
+            if box.centerIsIn(rect):
+                boxes.append(box)
+
+        return BoundingBoxes(boxes)
 
     def shuffleBoundingBoxes(self):
         shuffle(self._boundingBoxes)
@@ -203,14 +196,14 @@ class BoundingBoxes(MutableSequence):
     def stats(self):
         print("{:<20} {:<15} {}".format(
             "Label:", "Nb Images:", "Nb Annotations:"))
-        boxes_by_label = self.getBoxesBy(lambda box: box.getClassId())
-        for (label, boxes) in boxes_by_label.items():
-            nb_images = len(boxes.getNames())
+        for label in self.getClasses():
+            boxes = self.getBoundingBoxByClass(label)
+            nb_images = len(set([item.getImageName() for item in boxes]))
             nb_annot = len(boxes)
 
             print("{:<20} {:<15} {}".format(label, nb_images, nb_annot))
 
-    def save(self, type_coordinates=CoordinatesType.Relative, format=BBFormat.XYC, save_dir=None, save_conf=True):
+    def save(self, type_coordinates=CoordinatesType.Relative, format=BBFormat.XYC, save_dir=None):
         """
         Save all bounding boxes as Yolo annotation files in the specified directory.
 
@@ -224,61 +217,18 @@ class BoundingBoxes(MutableSequence):
             save_dir (str):
                 The directory where to save the files as TXT files.
         """
-        if save_dir is not None:
-            create_dir(save_dir)
+        for imageName in self.getNames():
+            description = ""
+            for box in self.getBoundingBoxesByImageName(imageName):
+                description += box.description(type_coordinates, format)
 
-        images_by_name = self.getBoxesBy(lambda box: box.getImageName())
-        for (image_name, boxes) in tqdm(images_by_name.items(), desc="Saving"):
-            description = "\n".join(box.description(type_coordinates, format, save_conf=save_conf) for box in boxes)
-
-            d = save_dir or os.path.split(image_name)[0]
-            fileName = os.path.splitext(image_name)[0] + ".txt"
-            fileName = os.path.join(d, os.path.basename(fileName))
+            fileName = os.path.splitext(imageName)[0] + ".txt"
+            if save_dir is not None:
+                create_dir(save_dir)
+                fileName = os.path.join(save_dir, os.path.basename(fileName))
 
             with open(fileName, "w") as f:
                 f.write(description)
-
-    def save_xml(self, save_dir=None):
-        boxes_by_name = dictGrouping(self, lambda box: box.getImageName())
-
-        for image_path, bounding_boxes in tqdm(boxes_by_name.items(), desc="Saving", unit="image"):
-            annotation = etree.Element("annotation")
-            
-            image_path = Path(image_path)
-            image_name = image_path.name
-            folder = image_path.parent.name
-            xml_path = image_path.with_suffix(".xml")
-
-            if save_dir:
-                xml_path = Path(save_dir) / xml_path.name
-
-            path_node = etree.Element("path")
-            path_node.text = f"{xml_path}"
-            annotation.append(path_node)
-
-            image_name_node = etree.Element("filename")
-            image_name_node.text = f"{image_name}"
-            annotation.append(image_name_node)
-
-            folder_node = etree.Element("folder")
-            folder_node.text = f"{folder}"
-            annotation.append(folder_node)
-
-            img_w, img_h = bounding_boxes[0].getImageSize()
-            size_node = etree.Element("size")
-            img_w_node = etree.Element("width")
-            img_h_node = etree.Element("height")
-            depth_node = etree.Element("depth")
-            img_w_node.text = f"{int(img_w)}"
-            img_h_node.text = f"{int(img_h)}"
-            depth_node.text = "3"
-            size_node.extend((img_w_node, img_h_node, depth_node))
-            annotation.append(size_node)
-
-            for bounding_box in bounding_boxes:
-                annotation.append(bounding_box.xml_repr())
-
-            xml_path.write_text(etree.tostring(annotation, pretty_print=True, encoding=str))
 
     def squareStemBoxes(self, ratio=0.075):
         boxes = BoundingBoxes()
@@ -295,12 +245,10 @@ class BoundingBoxes(MutableSequence):
         return boxes
 
     def plotHistogram(self):
-        boxes_by_label = self.getBoxesBy(lambda box: box.getClassId())
-        areas = [
-            [bbox.getArea() for bbox in boxes]
-            for (label, boxes) in boxes_by_label.items()
-        ]
-
+        areas = []
+        for label in self.getClasses():
+            boxes = self.getBoundingBoxByClass(label)
+            areas.append([bbox.getArea() for bbox in boxes])
         # plt.hist(areas, bins=200, stacked=True, density=True, label=labels)
         # plt.hist([bbox.getArea() for bbox in boxes], bins=100)
         plt.title('Stacked histogram of bounding box area')
@@ -349,6 +297,20 @@ class BoundingBoxes(MutableSequence):
         image = self.drawCVImage(cv.imread(name), name)
         cv.imwrite(save_name, image)
 
+    def drawImageCenter(self, name, save_dir="annotated_images/"):
+        create_dir(save_dir)
+        save_name = os.path.join(save_dir, os.path.basename(name))
+
+        image = cv.imread(name)
+        for box in self.getBoundingBoxesByImageName(name):
+            (x, y, _, _) = box.getAbsoluteBoundingBox(BBFormat.XYC)
+            label = box.getClassId()
+            color = (0, 255, 0) if box.getBBType() == BBType.GroundTruth else (0, 0, 255)
+
+            cv.circle(image, (int(x), int(y)), 5, color, thickness=cv.FILLED)
+
+        cv.imwrite(save_name, image)
+
     def drawAll(self, save_dir="annotated_images/"):
         """
         Draws all boxes on their corresponding images and save them to disk. You should store the real image paths in BoundingBox._imageName if you want to use this method.
@@ -364,56 +326,14 @@ class BoundingBoxes(MutableSequence):
         names = self.getNames()
         save_dir = [save_dir for _ in range(len(names))]
 
-        Parallel(n_jobs=-1, verbose=10)(delayed(self.drawImage)(name, sd) for (name, sd) in zip(names, save_dir))
+        Parallel(n_jobs=-1, backend="multiprocessing")(delayed(self.drawImage)(name, sd) for (name, sd) in zip(names, save_dir))
 
-    @staticmethod
-    def draw_image(image, boxes):
-        for box in boxes:
-            box.addIntoImage(image)
-        return image
+    def drawAllCenters(self, save_dir="annotated_images/"):
+        names = self.getNames()
+        save_dir = [save_dir for _ in range(len(names))]
 
-    def draw_all(self, save_dir):
-        create_dir(save_dir)
-        images_by_name = self.getBoxesBy(lambda box: box.getImageName())
-        for (image_name, boxes) in tqdm(images_by_name.items(), desc="Drawing", unit="image"):
-            img = cv.imread(image_name)
-            BoundingBoxes.draw_image(img, boxes)
-            save_name = os.path.join(save_dir, os.path.basename(image_name))
-            cv.imwrite(save_name, img)
-
-    def draw_all_centers(self, save_dir):
-        create_dir(save_dir)
-        images_by_name = self.getBoxesBy(lambda box: box.getImageName())
-
-        for (image_name, boxes) in tqdm(images_by_name.items(), desc="Drawing", unit="image"):
-            img = cv.imread(image_name)
-            for box in boxes:
-                (x, y, _, _) = box.getAbsoluteBoundingBox(BBFormat.XYC)
-                label = box.getClassId()
-                color = (0, 255, 0) if box.getBBType() == BBType.GroundTruth else (0, 0, 255)
-                cv.circle(img, (int(x), int(y)), 5, color, thickness=cv.FILLED)
-            save_name = os.path.join(save_dir, os.path.basename(image_name))
-            cv.imwrite(save_name, img)
-
-    def drawAllCenters(self, save_dir, n_jobs=-1):
-        def inner(element):
-            (image_name, image_boxes) = element
-            image = cv.imread(image_name)
-            save_name = os.path.join(save_dir, os.path.basename(image_name))
-
-            for box in image_boxes:
-                (x, y, _, _) = box.getAbsoluteBoundingBox(BBFormat.XYC)
-                label = box.getClassId()
-                color = (0, 255, 0) if box.getBBType() == BBType.GroundTruth else (0, 0, 255)
-
-                cv.circle(image, (int(x), int(y)), 5, color, thickness=cv.FILLED)
-
-            cv.imwrite(save_name, image)
-
-        create_dir(save_dir)
-        boxes = self.getBoxesBy(lambda box: box.getImageName())
-        Parallel(n_jobs, verbose=10)(
-            delayed(inner)(element) for element in boxes.items()
+        Parallel(n_jobs=-1, backend="multiprocessing")(
+            delayed(self.drawImageCenter)(name, sd) for (name, sd) in zip(names, save_dir)
         )
 
     def erase_image_names(self):
@@ -423,5 +343,8 @@ class BoundingBoxes(MutableSequence):
     def copy(self):
         return BoundingBoxes([box.copy() for box in self._boundingBoxes])
 
-    def __repr__(self):
-        return "\n".join(f"{box}" for box in self)
+    def __str__(self):
+        description = ""
+        for box in self:
+            description += str(box) + "\n"
+        return description

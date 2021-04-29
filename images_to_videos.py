@@ -20,7 +20,7 @@ for image in list:
     img.append(image)
 
 h, w, _ = img[0].shape
-fourcc = cv.VideoWriter_fourcc(*'M', 'J', 'P', 'G')
+fourcc = cv.VideoWriter_fourcc('M', 'J', 'P', 'G')
 video = cv.VideoWriter('video.avi', fourcc, 15, (w, h))
 
 j = 0

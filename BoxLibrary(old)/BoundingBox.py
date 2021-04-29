@@ -1,7 +1,6 @@
 from .utils import *
 from math import sqrt
 import copy
-from lxml import etree
 
 class BoundingBox:
     """
@@ -54,7 +53,7 @@ class BoundingBox:
         # For relative coords: (x,y,w,h)=(X_center/img_width , Y_center/img_height)
         if (typeCoordinates == CoordinatesType.Relative):
             """!!! Input is (xCenter, yCenter, w, h), rel"""
-            if format == BBFormat.XYC:
+            if format == BBFormat.XYWH:
                 (self._x, self._y, self._x2, self._y2) = convertToAbsoluteValues(imgSize, (x, y, w, h))
                 self._w = self._x2 - self._x
                 self._h = self._y2 - self._y
@@ -79,15 +78,13 @@ class BoundingBox:
                 self._y2 = h
                 self._w = self._x2 - self._x
                 self._h = self._y2 - self._y
-            elif format == BBFormat.XYC:
+            else:
                 self._w = w
                 self._h = h
                 self._x = x - self._w / 2.0
                 self._y = y - self._h / 2.0
                 self._x2 = x + self._w / 2.0
                 self._y2 = y + self._h / 2.0
-            else:
-                raise IOError(f"BBFormat '{format}' not defined.")
 
         if imgSize is None:
             self._width_img = None
@@ -143,7 +140,8 @@ class BoundingBox:
         self._imageName = new_name
 
     def getArea(self):
-        return (self._w + 1) * (self._h + 1)
+        area = (self._w + 1) * (self._h + 1)
+        return area
 
     def moveBy(self, dx, dy, typeCoordinates=CoordinatesType.Absolute, imgSize=None):
         """
@@ -214,10 +212,12 @@ class BoundingBox:
 
         def clippy(box, size):
             (xmin, ymin, xmax, ymax) = box.getAbsoluteBoundingBox(format=BBFormat.XYX2Y2)
-            xmin = max(xmin, 0)
-            ymin = max(ymin, 0)
+            if xmin < 0:
+                xmin = 0
             if xmax >= size[0]:
                 xmax = size[0] - 1
+            if ymin < 0:
+                ymin = 0
             if ymax >= size[1]:
                 ymax = size[1] - 1
 
@@ -247,7 +247,7 @@ class BoundingBox:
         box.clip(size)
         return box
 
-    def centerIsIn(self, rect=None, as_percent=False):
+    def centerIsIn(self, rect=None):
         """
         Returns True if the BoundingBox center is in a given rectangle. If no rectangle is provided, the image size stored in the BoundingBox is used, if there is one.
 
@@ -257,19 +257,25 @@ class BoundingBox:
         Returns:
             bool: Boolean indicading if the BoundingBox center is in the Rectangle.
         """
-        (img_w, img_h) = self.getImageSize()
-        if (img_w is None or img_h is None) and rect is None:
-            raise IOError("Parameter 'rect' is required")
 
-        if rect:
-            if as_percent:
-                rect = (rect[0]*img_w, rect[1]*img_h, rect[2]*img_w, rect[3]*img_h)
-        else:
-            rect = (0.0, 0.0, img_w, img_h)
+        if (self._width_img is None or self._height_img is None) and rect is None:
+            raise IOError("Parameter 'rect' is required. It is necessary to inform it.")
+
+        def centerIsIn(x, y, rect):
+            if x < rect[0]: return False
+            if x > rect[2]: return False
+            if y < rect[1]: return False
+            if y > rect[3]: return False
+            return True
 
         (x, y, _, _) = self.getAbsoluteBoundingBox(format=BBFormat.XYC)
 
-        return x > rect[0] and x < rect[2] and y > rect[1] and y < rect[3]
+        if rect is not None:
+            return centerIsIn(x, y, rect)
+        else:
+            (w, h) = self.getImageSize()
+            rect = [0, 0, w, h]
+            return centerIsIn(x, y, rect)
 
     def iou(self, other):
         """
@@ -337,12 +343,14 @@ class BoundingBox:
         vx = cxb - cxa
         vy = cyb - cya
 
-        return sqrt(pow(vx, 2) + pow(vy, 2))
+        dist = sqrt(pow(vx, 2) + pow(vy, 2))
+
+        return dist
 
     def setClassId(self, new_class_id):
         self._classId = new_class_id
 
-    def description(self, type_coordinates=None, format=None, save_conf=True):
+    def description(self, type_coordinates=None, format=None):
         """
         Returns a string representing the box: "classId <optional confidence> coord1 coord2 coord3 coord4". The coordinates depends on the chosen format.
 
@@ -352,55 +360,42 @@ class BoundingBox:
             format (optional BBFormat):
                 The coordinates format to use: XYWH, XYC or XYX2Y2. If not specified, the value stored in the BoundingBox object is used.
         """
-        type_coordinates = type_coordinates or self._typeCoordinates
-        format = format or self._format
-        box = self.getRelativeBoundingBox() if type_coordinates == CoordinatesType.Relative else self.getAbsoluteBoundingBox(format)
+        if type_coordinates is None:
+            type_coordinates = self._typeCoordinates
+        if format is None:
+            format = self._format
 
-        if self._bbType == BBType.Detected and save_conf:
-            return f"{self._classId} {self._classConfidence} {box[0]} {box[1]} {box[2]} {box[3]}"
+        if type_coordinates == CoordinatesType.Relative:
+            bbox = self.getRelativeBoundingBox()
+        else:
+            bbox = self.getAbsoluteBoundingBox(format)
+            # bbox = (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
+            bbox = (bbox[0], bbox[1], bbox[2], bbox[3])
 
-        return f"{self._classId} {box[0]} {box[1]} {box[2]} {box[3]}"
-
-    def xml_repr(self):
-        obj = etree.Element("object")
-        name = etree.Element("name")
-        name.text = f"{self._classId}"
-        obj.append(name)
-
-        xmin, ymin, xmax, ymax = self.getAbsoluteBoundingBox(format=BBFormat.XYX2Y2)
-        bbox = etree.Element("bndbox")
-
-        x_min = etree.Element("xmin")
-        x_min.text = f"{int(xmin)}"
-        bbox.append(x_min)
-
-        y_min = etree.Element("ymin")
-        y_min.text = f"{int(ymin)}"
-        bbox.append(y_min)
-
-        x_max = etree.Element("xmax")
-        x_max.text = f"{int(xmax)}"
-        bbox.append(x_max)
-
-        y_max = etree.Element("ymax")
-        y_max.text = f"{int(ymax)}"
-        bbox.append(y_max)
-
-        obj.append(bbox) 
-
-        return obj
+        if self._bbType == BBType.Detected:
+            return "{} {} {} {} {} {}\n".format(self._classId, self._classConfidence, *bbox)
+        else:
+            return "{} {} {} {} {}\n".format(self._classId, *bbox)
 
     def addIntoImage(self, image, color=None, thickness=2):
         import cv2
 
         # Choose color if not specified
-        color = color or ((127, 255, 127) if self._bbType == BBType.GroundTruth else (255, 100, 100))
+        if color is None:
+            if self._bbType == BBType.GroundTruth:
+                color = (127, 255, 127)
+            else:
+                color = (255, 100, 100)
+
         font = cv2.FONT_HERSHEY_SIMPLEX
         fontScale = 0.5
         fontThickness = 1
 
         x1, y1, x2, y2 = self.getAbsoluteBoundingBox(BBFormat.XYX2Y2)
-        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+        x1 = int(x1)
+        y1 = int(y1)
+        x2 = int(x2)
+        y2 = int(y2)
         cv2.rectangle(image, (x1, y1), (x2, y2), color, thickness)
 
         # Add label
@@ -422,35 +417,13 @@ class BoundingBox:
                     cv2.LINE_AA)
         return image
 
-    def drawCenter(self, save_name=None):
-        label = self.getClassId()
-        (x, y, _, _) = self.getAbsoluteBoundingBox(BBFormat.XYC)
-        image_name = self.getImageName()
-        name = os.path.basename(image_name)
-        save_name = f"center_{name}" if not save_name else save_name
-
-        image = cv.imread(image_name)
-        color = (0, 255, 0) if self.getBBType() == BBType.GroundTruth else (0, 0, 255)
-        cv.circle(image, (int(x), int(y)), 5, color, thickness=cv.FILLED)
-        cv.imwrite(save_name, image)
-
     def normalized(self, ratio=7.5/100):
         side_length = min(self._width_img, self._height_img) * ratio
         (x, y, _, _) = self.getAbsoluteBoundingBox(format=BBFormat.XYC)
-        
-        return BoundingBox(
-            imageName=self._imageName,
-            classId=self._classId,
-            x=x,
-            y=y,
-            w=side_length,
-            h=side_length,
-            typeCoordinates=CoordinatesType.Absolute,
-            imgSize=(self._width_img, self._height_img),
-            bbType=self._bbType,
-            classConfidence=self._classConfidence,
-            format=BBFormat.XYC,
+        box = BoundingBox(
+            imageName=self._imageName, classId=self._classId, x=x, y=y, w=side_length, h=side_length, typeCoordinates=CoordinatesType.Absolute, imgSize=(self._width_img, self._height_img), bbType=self._bbType, classConfidence=self._classConfidence, format=BBFormat.XYC
         )
+        return box
 
     def copy(self):
         """
@@ -458,9 +431,9 @@ class BoundingBox:
         """
         return copy.deepcopy(self)
 
-    def __repr__(self):
+    def __str__(self):
         coords = self.getAbsoluteBoundingBox(BBFormat.XYC)
-        description = "{}, {}, xMid: {:.6}, yMid: {:.6}, w: {:.6}, h: {:.6}".format(
+        description = "{} {} (xMid: {:.6}, yMid: {:.6}, w: {:.6}, h: {:.6})".format(
             os.path.basename(self._imageName),
             self._classId,
             *coords)

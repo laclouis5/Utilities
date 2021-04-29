@@ -7,26 +7,24 @@ import lxml.etree as ET
 from random import shuffle
 
 from glob import glob, iglob
-from skimage import io
+# from skimage import io
 import PIL
 import json
 import my_library
 import random
+from pathlib import Path
+from tqdm.contrib import tenumerate, tzip
+import tqdm as tqdm
 
 from BoxLibrary import *
 
+
 def clean_xml_files(folders):
-	files = []
 	for folder in folders:
-		files += files_with_extension(folder, ".xml")
-
-	for file in files:
-		tree = ET.parse(file).getroot()
-		tree.find("path").text = file
-
-		with open(file, "w") as f:
-			content = ET.tostring(tree, encoding="unicode")
-			f.write(content)
+		for xml_file in Path(folder).glob("*.xml"):
+			tree = ET.parse(xml_file.open()).getroot()
+			tree.find("path").text = str(xml_file)
+			xml_file.write_text(ET.tostring(tree, encoding="unicode"))
 
 
 def rename_all_files(folders):
@@ -60,7 +58,7 @@ def rename_all_files(folders):
 
 
 def normalized_stem_boxes(boxes,
-	ratio=5/100, labels=["haricot_tige", "mais_tige", "poireau_tige"]
+	ratio=7.5/100, labels=["haricot_tige", "mais_tige", "poireau_tige"]
 ):
 	normalized_boxes = BoundingBoxes()
 
@@ -105,15 +103,12 @@ def xml_to_csv_2(boundingboxes, save_dir="", ratio=0.8, no_obj_dir=None):
 
 		nb_train_bo_obj = int(ratio * len(no_obj_images))
 
-		j = 0
-		for no_obj_image in no_obj_images:
+		for j, no_obj_image in enumerate(no_obj_images):
 			no_obj_line = "{},,,,,\n".format(no_obj_image)
 			if j < nb_train_bo_obj:
 				train.append(no_obj_line)
 			else:
 				val.append(no_obj_line)
-			j += 1
-
 	with open(os.path.join(save_dir, "train.csv"), "w") as f_train:
 		f_train.writelines(train)
 	with open(os.path.join(save_dir, "val.csv"), "w") as f_val:
@@ -144,73 +139,71 @@ def create_VOC_database(database_path, folders, test_folders, names_to_labels, n
 	imageset_folder = os.path.join(database_path, "ImageSets/Main")
 
 	trainval_file = open(os.path.join(imageset_folder, 'trainval.txt'), 'w')
-	test_file = open(os.path.join(imageset_folder, 'test.txt'), 'w')
 
-	# Stuff to count things
-	image_counter = -1
+	with open(os.path.join(imageset_folder, 'test.txt'), 'w') as test_file:
+		# Stuff to count things
+		image_counter = -1
 
-	for folder in folders + test_folders:
-		for file in os.listdir(folder):
-			# Only process XML files
-			if (os.path.splitext(file)[1] != '.xml'): continue
+		for folder in folders + test_folders:
+			for file in os.listdir(folder):
+				# Only process XML files
+				if (os.path.splitext(file)[1] != '.xml'): continue
 
-			image_counter += 1
+				image_counter += 1
 
-			# Parse XML tree
-			tree = ET.parse(os.path.join(folder, file)).getroot()
+				# Parse XML tree
+				tree = ET.parse(os.path.join(folder, file)).getroot()
 
-			# Ingnore Operose evaluation files
-			if 'eval' in tree.find('filename').text and no_eval: continue
+				# Ingnore Operose evaluation files
+				if 'eval' in tree.find('filename').text and no_eval: continue
 
-			# Retreive path
-			image_filename = tree.find('filename').text
-			basepath = os.path.split(tree.find('path').text)[0]
-			xml_path = os.path.join(basepath, file)
-			image_path = os.path.join(basepath, image_filename)
+				# Retreive path
+				image_filename = tree.find('filename').text
+				basepath = os.path.split(tree.find('path').text)[0]
+				xml_path = os.path.join(basepath, file)
+				image_path = os.path.join(basepath, image_filename)
 
-			# Copy XML files to the new directory
-			shutil.copy(image_path, image_folder)
-			shutil.copy(xml_path, annotations_folder)
+				# Copy XML files to the new directory
+				shutil.copy(image_path, image_folder)
+				shutil.copy(xml_path, annotations_folder)
 
-			# Rename with a unique name
-			new_image_name = '{}.jpg'.format(image_counter)
-			new_xml_name = '{}.xml'.format(image_counter)
+				# Rename with a unique name
+				new_image_name = '{}.jpg'.format(image_counter)
+				new_xml_name = '{}.xml'.format(image_counter)
 
-			os.rename(
-				os.path.join(image_folder, image_filename),
-				os.path.join(image_folder, new_image_name))
-			os.rename(
-				os.path.join(annotations_folder, file),
-				os.path.join(annotations_folder, new_xml_name))
+				os.rename(
+					os.path.join(image_folder, image_filename),
+					os.path.join(image_folder, new_image_name))
+				os.rename(
+					os.path.join(annotations_folder, file),
+					os.path.join(annotations_folder, new_xml_name))
 
-			# Change 'path' and 'filename' fields to reflect the name changes.
-			new_xml_file_path = os.path.join(annotations_folder, new_xml_name)
-			new_tree = ET.parse(new_xml_file_path).getroot()
+				# Change 'path' and 'filename' fields to reflect the name changes.
+				new_xml_file_path = os.path.join(annotations_folder, new_xml_name)
+				new_tree = ET.parse(new_xml_file_path).getroot()
 
-			new_tree.find('filename').text = new_image_name
-			new_tree.find('path'). text = new_xml_file_path
+				new_tree.find('filename').text = new_image_name
+				new_tree.find('path'). text = new_xml_file_path
 
-			# Remove labels not used for training
-			for obj in new_tree.findall('object'):
-				if obj.find('name').text not in names_to_labels.keys():
-					new_tree.remove(obj)
+				# Remove labels not used for training
+				for obj in new_tree.findall('object'):
+					if obj.find('name').text not in names_to_labels.keys():
+						new_tree.remove(obj)
 
-			# Update the XML file
-			with open(new_xml_file_path, 'w') as file:
-				tree_str = ET.tostring(new_tree, encoding='unicode')
-				file.write(tree_str)
+				# Update the XML file
+				with open(new_xml_file_path, 'w') as file:
+					tree_str = ET.tostring(new_tree, encoding='unicode')
+					file.write(tree_str)
 
-			# Write TXT files for training and testing
-			if folder in folders:
-				trainval_file.write(os.path.splitext(new_image_name)[0] + '\n')
-			elif folder in test_folders:
-				test_file.write(os.path.splitext(new_image_name)[0] + '\n')
+				# Write TXT files for training and testing
+				if folder in folders:
+					trainval_file.write(os.path.splitext(new_image_name)[0] + '\n')
+				elif folder in test_folders:
+					test_file.write(os.path.splitext(new_image_name)[0] + '\n')
 
-	trainval_file.close()
-	test_file.close()
+		trainval_file.close()
 
 	print('Done!')
-
 
 def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8, shuffled=True):
 	train_dir = os.path.join(yolo_dir, 'train')
@@ -225,7 +218,8 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8, shuffled=
 	if not os.path.isdir(val_dir):
 		os.mkdir(val_dir)
 
-	names = boundingBoxes.getNames()
+	boxes_by_name = boundingBoxes.getBoxesBy(lambda box: box.getImageName())
+	names = sorted(boxes_by_name.keys())
 	new_names = []
 
 	if shuffled == True:
@@ -234,18 +228,14 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8, shuffled=
 
 	number_train = round(ratio*len(names))
 
-	for (i, name) in enumerate(names):
+	for (i, name) in tenumerate(names):
 		yolo_rep = []
 		img_path = os.path.splitext(name)[0] + '.jpg'
 		idenfier = 'im_{}'.format(i)
 		new_names.append(idenfier + ".jpg")
 
-		if i < number_train:
-			save_dir = train_dir
-		else:
-			save_dir = val_dir
-
-		for box in boundingBoxes.getBoundingBoxesByImageName(name):
+		save_dir = train_dir if i < number_train else val_dir
+		for box in boxes_by_name[name]:
 			label = names_to_labels[box.getClassId()]
 			x, y, w, h = box.getRelativeBoundingBox()
 
@@ -268,19 +258,65 @@ def xml_to_yolo_3(boundingBoxes, yolo_dir, names_to_labels, ratio=0.8, shuffled=
 			new_path = os.path.join("data/val/", relative_path)
 			f.write(new_path + "\n")
 
-	# with open(train_file, 'w') as f_write_1, open(val_file, 'w') as f_write_2:
-	# 	for item in iglob(os.path.join(train_dir, '*.jpg')):
-	# 		tail = os.path.split(item)[1]
-	# 		f_write_1.write('{}\n'.format(os.path.join('data/train/', tail)))
-	#
-	# 	for item in iglob(os.path.join(val_dir, '*.jpg')):
-	# 		tail = os.path.split(item)[1]
-	# 		f_write_2.write('{}\n'.format(os.path.join('data/val/', tail)))
+def xml_to_yolo_4(boxes, label_map, save_dir="yolo/", ratio=0.8, shuffle=True, no_obj_dir=None):
+	save_dir = Path(save_dir)
 
+	train_dir = save_dir / "train"
+	valid_dir = save_dir / "val"
+
+	save_dir.mkdir()
+	train_dir.mkdir()
+	valid_dir.mkdir()
+
+	boxes_by_name = boxes.getBoxesBy(lambda box: box.getImageName())
+	image_names = sorted(boxes_by_name.keys())
+	nb_train = round(ratio * len(boxes_by_name))
+	new_names = []
+
+	if shuffle:
+		random_gen = random.Random(498_562_751)
+		image_names = random_gen.sample(image_names, len(image_names))
+
+	for i, image_name in tenumerate(image_names, unit="img"):
+		image_boxes = boxes_by_name[image_name]
+		folder = train_dir if i < nb_train else valid_dir
+
+		new_image_name = folder / Path(image_name).with_stem(f"im_{i:06}").name
+		new_names.append(new_image_name)
+		description = "\n".join("{} {} {} {} {}".format(label_map[box.getClassId()], *box.getRelativeBoundingBox()) for box in image_boxes)
+
+		new_image_name.with_suffix(".txt").write_text(description)
+		shutil.copy(image_name, new_image_name)
+
+	(save_dir / "train.txt").write_text("".join(f"{Path('data/train') / n.name}\n" for n in new_names[:nb_train]))
+	(save_dir / "val.txt").write_text("".join(f"{Path('data/val') / n.name}\n" for n in new_names[nb_train:]))
+
+	if no_obj_dir:
+		no_obj_dir = Path(no_obj_dir)
+		image_names = sorted(list(no_obj_dir.glob("*.jpg")))
+		nb_train = round(ratio * len(image_names))
+		new_names = []
+
+		if shuffle:
+			rand_gen = random.Random(478_737_303)
+			image_names = rand_gen.sample(image_names, len(image_names))
+		
+		for i, image_name in tenumerate(image_names):
+			folder = train_dir if i < nb_train else valid_dir
+			new_image_name = folder / Path(image_name).with_stem(f"im_no_obj_{i:06}").name
+			new_names.append(new_image_name)
+			shutil.copy(image_name, new_image_name)
+			new_image_name.with_suffix(".txt").touch()
+		
+		with (save_dir / "train.txt").open("a") as f:
+			f.write("".join(f"{Path('data/train') / n.name}\n" for n in new_names[:nb_train]))
+
+		with (save_dir / "val.txt").open("a") as f:
+			f.write("".join(f"{Path('data/val') / n.name}\n" for n in new_names[nb_train:]))
 
 def add_no_obj_images(yolo_dir, no_obj_dir, ratio, shuffle=True):
 	'''
-	Make sure that there is train.txt and val.txt in yolo foler passed
+	Make sure that there is train.txt and val.txt in yolo folder passed
 	as argument.
 	'''
 	train_dir = os.path.join(yolo_dir, 'train/')
@@ -291,7 +327,7 @@ def add_no_obj_images(yolo_dir, no_obj_dir, ratio, shuffle=True):
 	assert os.path.isfile(train_file), 'train.txt does not exist in yolo directory'
 	assert os.path.isfile(val_file), 'val.txt does not exist in yolo directory'
 
-	images = [item for item in os.listdir(no_obj_dir) if os.path.splitext(item)[1] == '.jpg']
+	images = sorted([item for item in os.listdir(no_obj_dir) if os.path.splitext(item)[1] == '.jpg'])
 
 	if shuffle:
 		rand_gen = random.Random(478_737_303)
@@ -381,6 +417,7 @@ def get_image_sizes(folders):
 			and os.path.isfile(os.path.join(folder, os.path.splitext(image_path)[0] + '.xml')):
 				full_path = os.path.join(folder, image_path)
 				try:
+					# Use PILLOW instead of Skimage
 					image = io.imread(full_path)
 					shape = image.shape
 					sizes.append(shape)
@@ -599,11 +636,7 @@ def voc_to_coreML(bounding_boxes, save_dir="", ratio=0.8, no_obj_path=None):
 		# New unique name to avoid name conflits
 		new_image_name = "image_{}.jpg".format(id)
 
-		if id < nb_train:
-			main_dir = train_dir
-		else:
-			main_dir = valid_dir
-
+		main_dir = train_dir if id < nb_train else valid_dir
 		# Copy image in save folder
 		shutil.copy(image_name, os.path.join(main_dir, new_image_name))
 
@@ -641,11 +674,7 @@ def voc_to_coreML(bounding_boxes, save_dir="", ratio=0.8, no_obj_path=None):
 		for id, image_name in enumerate(random_image_names):
 			new_image_name = "no-obj_image_{}.jpg".format(id)
 
-			if id < nb_train:
-				main_dir = train_dir
-			else:
-				main_dir = valid_dir
-
+			main_dir = train_dir if id < nb_train else valid_dir
 			shutil.copy(image_name, os.path.join(main_dir, new_image_name))
 
 			annotation = {
@@ -702,25 +731,47 @@ def main(args=None):
 		# Dataset 6.0
 		# "haricot_debug_montoldre_2",
 		# "mais_debug_montoldre_2",
+		# Database 6.1
+		"training_set/2019-07-03_larrere/poireau/5",
+		# Dataset 7.0
+		"training_set/2020-10-01_ctifl/p0619_0928",
+		"training_set/2020-10-01_ctifl/p0623_1241",
+		"training_set/2020-10-01_ctifl/p0626_0816",
+		"training_set/2020-10-01_ctifl/p0626_1420",
+		"training_set/2020-10-01_ctifl/p0626_1423",
+		"training_set/2020-10-01_ctifl/p0630_1420",  # Used
+		"training_set/2020-10-01_ctifl/p0630_1427",
+		"training_set/2020-10-01_ctifl/p0630_1428",
+		"training_set/2020-10-01_ctifl/p0701_1308",  # ++
+		"training_set/2020-10-01_ctifl/p0923_1627",  # ++  Used
+		"training_set/2020-10-01_ctifl/p0928_1042",  #  TODO for StructureDet
+		# Dataset 8.0
+		"training_set/2020-10-12_montoldre/bean_1",
+		"training_set/2020-10-12_montoldre/bean_2",
+		"training_set/2020-10-12_montoldre/bean_3",
+		"training_set/2020-10-12_montoldre/maize_1",
+		"training_set/2020-10-12_montoldre/maize_2",
+		"training_set/2020-10-12_montoldre/maize_3",
+		# Dataset 8.1
+		"training_set/2020-10-12_montoldre/bean_4",
+		"training_set/2020-10-12_montoldre/maize_4",
+		# Dataset 9.0
+		"training_set/2021-03-29_larrere/row_1",
 	]
-
-	# folders = ["haricot_montoldre_sequential"]
 
 	folders = [os.path.join(base_path, folder) for folder in folders]
 	no_obj_dir = '/media/deepwater/DATA/Shared/Louis/datasets/training_set/no_obj/'
 
 	classes = ["mais", "haricot", "poireau", 'mais_tige', 'haricot_tige', 'poireau_tige']
-	# classes = [
-	# 	'mais','haricot', 'poireau']
-	# classes = ['mais_tige','haricot_tige', 'poireau_tige']
 
 	names_to_labels = {
-		'mais': 0,'haricot': 1, 'poireau': 2, 'mais_tige': 3,
+		'mais': 0, 'haricot': 1, 'poireau': 2, 'mais_tige': 3,
 		'haricot_tige': 4, 'poireau_tige': 5}
-	# names_to_labels = {'mais_tige': 0, 'haricot_tige': 1, 'poireau_tige': 2}
+
 	labels_to_names = {
 		0: "maize", 1: "bean", 2: "leek", 3: "stem_maize",
 		4: "stem_bean", 5: "stem_leek"}
+
 	fr_to_en = {
 		"mais": "maize",
 		"haricot": "bean",
@@ -729,20 +780,18 @@ def main(args=None):
 		"haricot_tige": "bean_stem",
 		"poireau_tige": "leek_stem"}
 
-	yolo_path = "/home/deepwater/yolo/"
+	yolo_path = "yolo/"
 
 	clean_xml_files(folders)
-	boundingBoxes = Parser.parse_yolo_gt_folder("/home/deepwater/github/darknet/data/database_4.2_norm_5%/val")
-	boundingBoxes = Parser.parse_xml_directories(folders, classes)
-	# boundingBoxes.mapLabels(fr_to_en)
-	boundingBoxes = normalized_stem_boxes(boundingBoxes, ratio=5/100, labels=["3", "4", "5"])
-	boundingBoxes.save()
-	boundingBoxes.stats()
+	boxes = Parser.parse_xml_directories(folders, classes)
+	boxes = my_library.normalized_stem_boxes(boxes, ratio=2.5/100)
+	boxes.stats()
 
-	# xml_to_yolo_3(boundingBoxes, yolo_path, names_to_labels,
+	# xml_to_yolo_3(boxes, yolo_path, names_to_labels,
 	# 	shuffled=True, ratio=0.8)
 	# add_no_obj_images(yolo_path, no_obj_dir,
 	# 	ratio=0.8, shuffle=True)
+	xml_to_yolo_4(boxes, names_to_labels, save_dir=yolo_path, no_obj_dir=no_obj_dir)
 
 	# voc_to_coreML(boundingBoxes, save_dir="CoreML", no_obj_path=no_obj_dir)
 	# my_library.pix2pix_square_stem_db(boundingBoxes, label_size=8/100)

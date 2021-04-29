@@ -12,7 +12,7 @@ class Evaluator:
     cocoThresholds = [thresh / 100 for thresh in range(50, 100, 5)]
 
     def GetPascalVOCMetrics(self, boxes, thresh=0.5, method=EvaluationMethod.IoU):
-        ret = {}
+        ret = []
         boxesByLabels = dictGrouping(boxes, key=lambda box: box.getClassId())
         labels = sorted(boxesByLabels.keys())
 
@@ -33,9 +33,9 @@ class Evaluator:
 
             TP = np.repeat(False, len(detections))
             npos = len(boxesByDetectionMode[BBType.GroundTruth])
-            accuracies = []
             visited = {k: np.repeat(False, len(v))
-                for k, v in groundTruths.items()}
+                for k, v in groundTruths.items()
+            }
 
             for (i, detection) in enumerate(detections):
                 imageName = detection.getImageName()
@@ -54,7 +54,6 @@ class Evaluator:
                     if maxIoU > thresh and not visited[imageName][jmax]:
                         visited[imageName][jmax] = True
                         TP[i] = True
-                        accuracies.append(maxIoU)
 
                 if method == EvaluationMethod.Distance:
                     minDist = sys.float_info.max
@@ -71,29 +70,26 @@ class Evaluator:
                     if minDist < normThresh and not visited[imageName][jmin]:
                         visited[imageName][jmin] = True
                         TP[i] = True
-                        accuracies.append(minDist / minImgSize)
 
             acc_TP = np.cumsum(TP)
             acc_FP = np.cumsum([not tp for tp in TP])
             rec = acc_TP / npos
             prec = np.divide(acc_TP, (acc_FP + acc_TP))
-            total_tp = sum(TP)
-            total_fp = len(TP) - total_tp
 
             [ap, mpre, mrec, ii] = Evaluator.CalculateAveragePrecision(rec, prec)
 
-            ret[label] = {
-                "precision": prec,
-                "recall": rec,
-                "AP": ap,
-                "threshold": thresh,
-                "total positives": npos,
-                "total detections": len(TP),
-                "total TP": total_tp,
-                "total FP": total_fp,
-                "accuracies": np.array(accuracies),
-                "evaluation method": method
-            }
+            ret.append({
+                'class': label,
+                'precision': prec,
+                'recall': rec,
+                'AP': ap,
+                'interpolated precision': mpre,
+                'interpolated recall': mrec,
+                'total positives': npos,
+                'total detections': len(TP),
+                'total TP': sum(TP),
+                'total FP': sum([not tp for tp in TP])
+            })
 
         return ret
 
@@ -103,7 +99,7 @@ class Evaluator:
 
     def getAP(self, boundingBoxes, thresh=0.5, method=EvaluationMethod.IoU):
         AP = [res["AP"]
-            for res in self.GetPascalVOCMetrics(boundingBoxes, thresh, method).values()]
+            for res in self.GetPascalVOCMetrics(boundingBoxes, thresh, method)]
         return sum(AP) / len(AP) if AP else 0.0
 
     def getCocoAP(self, boundingBoxes):
@@ -121,37 +117,17 @@ class Evaluator:
         print("coco AP: {:.2%}".format(cocoAP))
 
     def printAPsByClass(self, boxes, thresh=0.5, method=EvaluationMethod.IoU):
-        metrics = self.GetPascalVOCMetrics(boxes, thresh, method)
-        tot_tp, tot_fp, tot_npos, accuracy = 0, 0, 0, 0
-        accuracies = []
-        print("AP@{} by class:".format(thresh))
-
-        for (label, metric) in metrics.items():
-            AP = metric["AP"]
-            totalPositive = metric["total positives"]
-            totalDetections = metric["total detections"]
-            TP = metric["total TP"]
-            FP = metric["total FP"]
-            accuracy += sum(metric["accuracies"])
-            accuracies.extend(metric["accuracies"])
-            tot_tp += TP
-            tot_fp += FP
-            tot_npos += totalPositive
-
-            print("  {:<10} - AP: {:.2%}  npos: {}  nDet: {}  TP: {}  FP: {}".format(label, AP, totalPositive, totalDetections, TP, FP))
-
-        recall = tot_tp / tot_npos
-        precision = tot_tp / (tot_tp + tot_fp)
-        f1 = 2 * recall * precision / (recall + precision)
-        accuracy = accuracy / tot_tp
-
-        std = np.std(accuracies)
-        err = std / np.sqrt(len(accuracies))
-
-        print("Global stats: ")
-        print("  recall: {:.2%}, precision: {:.2%}, f1: {:.2%}, acc: {:.2%}, err_acc: {:.2%}".format(recall, precision, f1, accuracy, err))
-
-        return (recall, precision, f1)
+        if thresh is not None:
+            metrics = self.GetPascalVOCMetrics(boxes, thresh, method)
+            print("AP@{} by class:".format(thresh))
+            for metric in metrics:
+                label = metric["class"]
+                AP = metric["AP"]
+                totalPositive = metric["total positives"]
+                totalDetections = metric["total detections"]
+                TP = metric["total TP"]
+                FP = metric["total FP"]
+                print("  {:<13} - AP: {:.2%}  npos: {}  nDet: {}  TP: {}  FP: {}".format(label, AP, totalPositive, totalDetections, TP, FP))
 
     def PlotPrecisionRecallCurve(self,
                                  boundingBoxes,
@@ -181,40 +157,40 @@ class Evaluator:
         Returns:
             A list of dictionaries. Each dictionary contains information and metrics of each class.
             The keys of each dictionary are:
-            dict["class"]: class representing the current dictionary;
-            dict["precision"]: array with the precision values;
-            dict["recall"]: array with the recall values;
-            dict["AP"]: average precision;
-            dict["interpolated precision"]: interpolated precision values;
-            dict["interpolated recall"]: interpolated recall values;
-            dict["total positives"]: total number of ground truth positives;
-            dict["total TP"]: total number of True Positive detections;
-            dict["total FP"]: total number of False Negative detections;
+            dict['class']: class representing the current dictionary;
+            dict['precision']: array with the precision values;
+            dict['recall']: array with the recall values;
+            dict['AP']: average precision;
+            dict['interpolated precision']: interpolated precision values;
+            dict['interpolated recall']: interpolated recall values;
+            dict['total positives']: total number of ground truth positives;
+            dict['total TP']: total number of True Positive detections;
+            dict['total FP']: total number of False Negative detections;
         """
         results = self.GetPascalVOCMetrics(boundingBoxes, IOUThreshold)
         result = None
         # Each resut represents a class
         for result in results:
             if result is None:
-                raise IOError("Error: Class %d could not be found." % classId)
+                raise IOError('Error: Class %d could not be found.' % classId)
 
-            classId = result["class"]
-            precision = result["precision"]
-            recall = result["recall"]
-            average_precision = result["AP"]
-            mpre = result["interpolated precision"]
-            mrec = result["interpolated recall"]
-            npos = result["total positives"]
-            total_tp = result["total TP"]
-            total_fp = result["total FP"]
+            classId = result['class']
+            precision = result['precision']
+            recall = result['recall']
+            average_precision = result['AP']
+            mpre = result['interpolated precision']
+            mrec = result['interpolated recall']
+            npos = result['total positives']
+            total_tp = result['total TP']
+            total_fp = result['total FP']
 
             plt.close()
             if showInterpolatedPrecision:
                 if method == MethodAveragePrecision.EveryPointInterpolation:
-                    plt.plot(mrec, mpre, "--r", label="Interpolated precision (every point)")
+                    plt.plot(mrec, mpre, '--r', label='Interpolated precision (every point)')
                 elif method == MethodAveragePrecision.ElevenPointInterpolation:
                     # Uncomment the line below if you want to plot the area
-                    # plt.plot(mrec, mpre, "or", label="11-point interpolated precision")
+                    # plt.plot(mrec, mpre, 'or', label='11-point interpolated precision')
                     # Remove duplicates, getting only the highest precision of each recall value
                     nrec = []
                     nprec = []
@@ -224,21 +200,21 @@ class Evaluator:
                             idxEq = np.argwhere(mrec == r)
                             nrec.append(r)
                             nprec.append(max([mpre[int(id)] for id in idxEq]))
-                    plt.plot(nrec, nprec, "or", label="11-point interpolated precision")
-            plt.plot(recall, precision, label="Precision")
-            plt.xlabel("recall")
-            plt.ylabel("precision")
+                    plt.plot(nrec, nprec, 'or', label='11-point interpolated precision')
+            plt.plot(recall, precision, label='Precision')
+            plt.xlabel('recall')
+            plt.ylabel('precision')
             if showAP:
                 ap_str = "{0:.2f}%".format(average_precision * 100)
                 # ap_str = "{0:.4f}%".format(average_precision * 100)
-                plt.title("Precision x Recall curve \nClass: %s, AP: %s" % (str(classId), ap_str))
+                plt.title('Precision x Recall curve \nClass: %s, AP: %s' % (str(classId), ap_str))
             else:
-                plt.title("Precision x Recall curve \nClass: %d" % classId)
+                plt.title('Precision x Recall curve \nClass: %d' % classId)
             plt.legend(shadow=True)
             plt.grid()
 
             if savePath is not None:
-                plt.savefig(os.path.join(savePath, classId + ".png"))
+                plt.savefig(os.path.join(savePath, classId + '.png'))
             if showGraphic is True:
                 plt.show()
                 # plt.waitforbuttonpress()

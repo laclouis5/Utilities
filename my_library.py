@@ -12,6 +12,7 @@ from BoxLibrary import *
 from numba import jit
 import random
 
+
 def egi_mask(image, thresh=1.15):
     image_np = np.array(image).astype(float)
 
@@ -47,10 +48,7 @@ def scatter3d(image, egi_mask):
     # HSV
     image_2 = color.rgb2hsv(image)
 
-    list_2   = []
-    for x, y in zip(x_rand, y_rand):
-        list_2.append(image_2[y, x, :])
-
+    list_2 = [image_2[y, x, :] for x, y in zip(x_rand, y_rand)]
     h, s, v = zip(*list_2)
 
     fig = plt.figure()
@@ -153,8 +151,7 @@ def pix2pix_square_stem_db(boxes, size=1024, save_dir="pix_to_pix/", label_size=
         "leek_stem": (255, 0, 0) # Blue
     }
 
-    im_id = 0
-    for name in image_names:
+    for im_id, name in enumerate(image_names):
         image_boxes = boxes.getBoundingBoxesByImageName(name)
         image = cv.imread(name)
         (img_height, img_width) = image.shape[:2]
@@ -184,8 +181,6 @@ def pix2pix_square_stem_db(boxes, size=1024, save_dir="pix_to_pix/", label_size=
 
         cv.imwrite(segmented_name, segmentation_image)
         cv.imwrite(img_out_name, image)
-
-        im_id += 1
 
 
 def get_square_database(yolo_dir, save_dir=''):
@@ -458,8 +453,7 @@ def get_stem_database(yolo_folder, save_dir="plant_stem_db/"):
 
             # Convert to square and expand a little
             l = max(w, h)
-            if l >= min(im_w, im_h):
-                l = min(im_w, im_h)
+            l = min(l, min(im_w, im_h))
 
             new_x = x
             new_y = y
@@ -513,9 +507,9 @@ def get_stem_database(yolo_folder, save_dir="plant_stem_db/"):
                 y_min = round((y_min - ymin) / h_s * resolution)
                 y_max = round((y_max - ymin) / h_s * resolution)
 
-                if x_min < 0 : x_min = 0
+                x_min = max(x_min, 0)
                 if x_max >= resolution : x_max = resolution - 1
-                if y_min < 0 : y_min = 0
+                y_min = max(y_min, 0)
                 if y_max >= resolution : y_max = resolution - 1
 
                 new_box = BoundingBox(imageName=box_stem.getImageName(), classId=box_stem.getClassId()-3, x=x_min, y=y_min, w=x_max, h=y_max, format=BBFormat.XYX2Y2, imgSize=(resolution, resolution))
@@ -552,34 +546,13 @@ def get_stem_database(yolo_folder, save_dir="plant_stem_db/"):
         with open(os.path.join(save_dir, "val.txt"), "w") as f:
             f.writelines(image_list)
 
-
-def normalize_stem_boxes(folder, save_dir):
-    map_labels = {
-        "0": "maize",
-        "1": "bean",
-        "2": "leek",
-        "3": "stem_maize",
-        "4": "stem_bean",
-        "5": "stem_leek"
-    }
-    bounding_boxes = parse_yolo_folder(folder)
-    bounding_boxes.mapLabels(map_labels)
-    new_boxes = bounding_boxes.squareStemBoxes()
-    new_boxes.save(save_dir=save_dir, type_coordinates=CoordinatesType.Absolute, format=BBFormat.XYX2Y2)
+def normalized_stem_boxes(boxes, ratio=7.5/100, labels={"haricot_tige", "mais_tige", "poireau_tige"}):
+	return BoundingBoxes([box.normalized(ratio) if box.getClassId() in labels else box for box in boxes])
 
 
 def main(args=None):
-    yolo_path = '/home/deepwater/github/darknet/data/database_5.0/val'
-    path = "test/"
-    new_labels = {
-        "0": "maize",
-        "1": "bean",
-        "2": "leek",
-        "3": "stem_maize",
-        "4": "stem_bean",
-        "5": "stem_leek"
-    }
-    # boxes = Parser.parse_folder(path, parse_yolo_file)
+    yolo_path = '/home/deepwater/github/darknet/data/database_6.1/val'
+    normalize_stem_boxes(yolo_path, yolo_path)
 
 if __name__ == "__main__":
     main()
